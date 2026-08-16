@@ -111,3 +111,31 @@ Two things to adjust before trusting a number for your own stack:
 - Add your servers to the `servers` tuple in `bench.py::names_in`, which strips
   `server_`/`server:`/`server__` prefixes. Gateways that prefix tool names will
   otherwise score 0.
+
+## Where this is meant to run
+
+The rig starts ~16 local servers, needs the ToolHive `thv` binary, and drives
+everything over localhost. Run it on **Linux or macOS**, or under **WSL** on
+Windows. Git Bash (MINGW64) is not supported.
+
+`run-semantic.sh` is self-locating: it creates everything it needs under
+`./.work` next to the script (override with `BENCH_HOME`), generates its own port
+map and vMCP config from `real_catalogue.py`, and kills what it started on exit.
+It does not assume any path outside its own directory.
+
+Point it at the two things it can't build for you:
+
+```bash
+git clone --depth 1 https://github.com/stacklok/toolhive && \
+  (cd toolhive && go build -o thv ./cmd/thv)
+python3 -m venv .venv && .venv/bin/pip install fastembed
+
+THV=$PWD/toolhive/thv EMBED_PYTHON=$PWD/.venv/bin/python \
+  ./run-semantic.sh bge tokens
+```
+
+Both are checked up front, and a missing one prints the exact command to fix it
+rather than failing partway through.
+
+The simpler path is to let a Claude Code cloud session run it — the toolchain is
+already there, and only the `huggingface.co` allowlist is missing.

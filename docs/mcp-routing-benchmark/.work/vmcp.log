@@ -1,0 +1,54 @@
+{"time":"2026-08-16T04:10:20Z","level":"WARN","msg":"could not check for updates: failed to check for updates: failed to send request to update API: Get \"https://updates.stacklok.com/api/v1/version\": Forbidden"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"Loading configuration from: /home/user/skills/docs/mcp-routing-benchmark/.work/vmcp-semantic.yaml"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"configuration loaded and validated successfully"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"  Name: real-vmcp-semantic"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"  Group: real"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"  Conflict Resolution: prefix"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"initializing outgoing authentication"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"Static mode: using 14 pre-configured backends"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"Discovering backends in group: real"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"discovering backends in group","group":"real"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"using pre-configured static backends (no K8s API access)","count":14}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"Brevo","url":"http://127.0.0.1:19100/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"Canva","url":"http://127.0.0.1:19101/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"ClickUp","url":"http://127.0.0.1:19102/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"Granola","url":"http://127.0.0.1:19103/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"Hugging_Face","url":"http://127.0.0.1:19104/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"Linear","url":"http://127.0.0.1:19105/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"Microsoft_365","url":"http://127.0.0.1:19106/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"Miro","url":"http://127.0.0.1:19107/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"Mobbin","url":"http://127.0.0.1:19108/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"PostHog","url":"http://127.0.0.1:19109/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"Sentry","url":"http://127.0.0.1:19110/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"Supabase","url":"http://127.0.0.1:19111/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"Vercel","url":"http://127.0.0.1:19112/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"loaded static backend","name":"github","url":"http://127.0.0.1:19113/mcp","transport":"streamable-http"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"Discovered 14 backends"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"using prefix conflict resolution strategy","format":"{workload}_"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"dynamic backend registry enabled for Kubernetes environment"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"Setting up incoming authentication (type: anonymous)"}
+{"time":"2026-08-16T04:10:20Z","level":"WARN","msg":"vMCP is configured with anonymous incoming auth; all anonymous sessions share a single sentinel binding, so possession of a session ID is sufficient to act as that session from any source. Anonymous mode is intended for development only.","incoming_auth_type":"anonymous"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"health monitoring configured from operational settings"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"creating anonymous authentication middleware"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"Incoming authentication configured: anonymous"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"starting health monitor","backends":14,"interval":30000000000,"threshold":3}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"health monitoring enabled","check_interval":30000000000,"unhealthy_threshold":3,"timeout":10000000000,"degraded_threshold":5000000000}
+{"time":"2026-08-16T04:10:20Z","level":"WARN","msg":"MCP 2026-07-28 (Modern) dispatch disabled: enabled features require the session (Legacy) path","features":["optimizer"]}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"Starting Virtual MCP Server at 127.0.0.1:18091"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"authentication middleware enabled for MCP endpoints"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"recovery middleware enabled for MCP endpoints"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"starting Virtual MCP Server","address":"127.0.0.1:18091","endpoint":"/mcp"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"health endpoints available","health":"127.0.0.1:18091/health","ping":"127.0.0.1:18091/ping","status":"127.0.0.1:18091/status","backends_health":"127.0.0.1:18091/api/backends/health"}
+{"time":"2026-08-16T04:10:20Z","level":"INFO","msg":"starting periodic status reporting","interval":30000000000}
+{"time":"2026-08-16T04:10:21Z","level":"INFO","msg":"starting capability aggregation","backends":14}
+{"time":"2026-08-16T04:10:21Z","level":"INFO","msg":"querying capabilities from backends","count":14}
+{"time":"2026-08-16T04:10:22Z","level":"INFO","msg":"successfully queried backends","successful":14,"total":14}
+{"time":"2026-08-16T04:10:22Z","level":"INFO","msg":"prefix strategy created unique tools","count":412}
+{"time":"2026-08-16T04:10:22Z","level":"INFO","msg":"merged capabilities","tools":412,"resources":0,"prompts":0}
+{"time":"2026-08-16T04:10:22Z","level":"INFO","msg":"capability aggregation complete","backends":14,"tools":412,"resources":0,"prompts":0}
+{"time":"2026-08-16T04:10:22Z","level":"INFO","msg":"session capabilities injected from core","session_id":"450298a7-d7a2-4480-a9bf-818e87973938","tool_count":2,"resource_count":0,"resource_template_count":0,"prompt_count":0}
+{"time":"2026-08-16T04:10:24Z","level":"INFO","msg":"context cancelled, shutting down server"}
+{"time":"2026-08-16T04:10:24Z","level":"INFO","msg":"stopping Virtual MCP Server"}
+{"time":"2026-08-16T04:10:24Z","level":"INFO","msg":"stopping health monitor","backends":14}
+{"time":"2026-08-16T04:10:24Z","level":"INFO","msg":"health monitor stopped"}
+{"time":"2026-08-16T04:10:24Z","level":"INFO","msg":"virtual MCP Server stopped"}
