@@ -1,0 +1,5 @@
+# Transient state created by run-semantic.sh: port map, generated vMCP config,
+# server logs, pid list. Regenerated on every run — never commit it.
+.work/
+__pycache__/
+*.pyc

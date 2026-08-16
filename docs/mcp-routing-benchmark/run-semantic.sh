@@ -46,6 +46,23 @@ if [ "$BACKEND" != "hash" ]; then
     fi
     echo "note: fastembed unavailable from '$EMBED_PYTHON'; auto will fall back to hash" >&2
   fi
+
+  # The weights come from huggingface.co on first use. Fail here with something
+  # actionable rather than 90 seconds later inside the embedding server.
+  if ! curl -sf -o /dev/null -m 15 \
+       "https://huggingface.co/BAAI/bge-small-en-v1.5/resolve/main/config.json" 2>/dev/null; then
+    MSG="huggingface.co is unreachable, so BAAI/bge-small-en-v1.5 cannot be downloaded.
+  If this is a Claude Code cloud session, the environment's network policy blocks it:
+    claude.ai/code -> cloud icon above the message box -> edit environment
+    -> Network access: Custom
+    -> Allowed domains:  huggingface.co
+                         *.huggingface.co
+    -> tick 'Also include default list of common package managers'
+  The change applies to sessions started afterwards, not this one.
+  To run without the model meanwhile, use the lexical control:  $0 hash $FIXMODE"
+    [ "$BACKEND" = "bge" ] && die "$MSG"
+    echo "note: $MSG" >&2
+  fi
 fi
 
 case "$FIXMODE" in names|tokens|real) ;; *) die "fixture mode must be names, tokens or real" ;; esac
