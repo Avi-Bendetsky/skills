@@ -40,6 +40,64 @@ python3 bench.py http://127.0.0.1:18080/mcp retrieve_tools query      # MCPProxy
 python3 bench.py http://127.0.0.1:18090/mcp find_tool tool_description # ToolHive vMCP
 ```
 
+## Semantic run (one command, once embeddings are available)
+
+```bash
+bash run-semantic.sh bge          # real embeddings
+bash run-semantic.sh hash         # lexical control
+bash run-semantic.sh auto         # bge if the model loads, else hash
+```
+
+`run-semantic.sh` brings up the fixtures, starts `embedserver.py`, starts vMCP with
+`vmcp-semantic.example.yaml`, scores the 43 queries, and prints how many embedding
+requests the run actually made — so you can prove the semantic arm was exercised
+rather than assume it.
+
+| File | Purpose |
+|---|---|
+| `embedserver.py` | Local OpenAI-compatible `/v1/embeddings`. Nothing leaves the machine. |
+| `vmcp-semantic.example.yaml` | vMCP config with `embeddingProvider: openai` and `hybridSearchSemanticRatio: "0.6"`. |
+| `run-semantic.sh` | Brings the whole rig up and scores it. |
+
+### The two backends
+
+- **`bge`** — `fastembed` with `BAAI/bge-small-en-v1.5`, ToolHive's default model.
+  Real sentence embeddings. Needs a one-time model download from `huggingface.co`.
+- **`hash`** — deterministic hashed bag-of-words in 384 dims. **Not semantic** by
+  construction: `cos("refund a charge", "give the money back") = 0.0`. It exists to
+  prove the wiring without the model, and as a control — if hybrid-with-`hash`
+  scores like plain lexical while hybrid-with-`bge` scores much better, the gain is
+  attributable to semantics rather than to the hybrid plumbing.
+
+### Status of the rig
+
+Verified end to end with the `hash` backend: **44 embedding requests** across 43
+queries, confirming ToolHive's semantic arm calls the endpoint and the OpenAI
+provider path works. Scores (`top-1 21%, top-3 33%, top-5 44%, 0 empty, 48 ms`)
+are the control's, not a semantic result — spending 60% of the result budget on a
+non-semantic embedder costs top-3, exactly as expected. Median latency rises from
+3 ms to 48 ms, which is the embedding round-trip per query.
+
+Everything except the model weights is proven. Only ToolHive has a semantic mode;
+MCPProxy is lexical-only in shipped code and Nexus is Tantivy-only, so this run
+answers "does hybrid beat lexical" rather than being a three-way comparison.
+
+### Getting the model
+
+`huggingface.co` is blocked by the environment's network policy. To allow it, open
+[claude.ai/code](https://claude.ai/code), click the cloud icon above the message
+box, edit the environment, set **Network access** to **Custom**, and add:
+
+```text
+huggingface.co
+*.huggingface.co
+```
+
+Tick **"Also include default list of common package managers"** — Custom replaces
+the Trusted list entirely, and without it PyPI and npm stop resolving. The change
+applies to sessions started afterwards; running sessions keep the config they
+started with.
+
 ## Reading the results
 
 The 16 queries deliberately avoid the tools' own vocabulary ("bounce a stuck
