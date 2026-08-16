@@ -1,0 +1,61 @@
+name: real-vmcp-semantic
+groupRef: real
+backends:
+  - name: Brevo
+    url: http://127.0.0.1:19100/mcp
+    transport: streamable-http
+  - name: Canva
+    url: http://127.0.0.1:19101/mcp
+    transport: streamable-http
+  - name: ClickUp
+    url: http://127.0.0.1:19102/mcp
+    transport: streamable-http
+  - name: Granola
+    url: http://127.0.0.1:19103/mcp
+    transport: streamable-http
+  - name: Hugging_Face
+    url: http://127.0.0.1:19104/mcp
+    transport: streamable-http
+  - name: Linear
+    url: http://127.0.0.1:19105/mcp
+    transport: streamable-http
+  - name: Microsoft_365
+    url: http://127.0.0.1:19106/mcp
+    transport: streamable-http
+  - name: Miro
+    url: http://127.0.0.1:19107/mcp
+    transport: streamable-http
+  - name: Mobbin
+    url: http://127.0.0.1:19108/mcp
+    transport: streamable-http
+  - name: PostHog
+    url: http://127.0.0.1:19109/mcp
+    transport: streamable-http
+  - name: Sentry
+    url: http://127.0.0.1:19110/mcp
+    transport: streamable-http
+  - name: Supabase
+    url: http://127.0.0.1:19111/mcp
+    transport: streamable-http
+  - name: Vercel
+    url: http://127.0.0.1:19112/mcp
+    transport: streamable-http
+  - name: github
+    url: http://127.0.0.1:19113/mcp
+    transport: streamable-http
+incomingAuth:
+  type: anonymous
+outgoingAuth:
+  source: inline
+  default:
+    type: unauthenticated
+aggregation:
+  conflictResolution: prefix
+  conflictResolutionConfig:
+    prefixFormat: "{workload}_"
+optimizer:
+  maxToolsToReturn: 5
+  embeddingProvider: openai
+  embeddingService: http://127.0.0.1:18200/v1
+  embeddingModel: local-embed
+  hybridSearchSemanticRatio: "0.6"
