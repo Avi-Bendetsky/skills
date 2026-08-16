@@ -180,6 +180,81 @@ anything. This is consistent with the repo being untouched since 2026-03-25.
 
 ---
 
+## Run 2: the real catalogue (412 tools, 14 servers)
+
+The 16-tool fixture above is a toy. This run uses **the actual MCP catalogue
+connected to this workspace** — 412 tools across Brevo, Canva, ClickUp, Granola,
+Hugging Face, Linear, Microsoft 365, Miro, Mobbin, PostHog, Sentry, Supabase,
+Vercel and GitHub — with 43 queries whose ground truth was validated against the
+catalogue programmatically.
+
+**Embeddings still could not be enabled.** `huggingface.co` is an organisation
+policy denial at the egress proxy (`CONNECT tunnel failed, response 403`), and
+the proxy's own README instructs that such denials be reported rather than routed
+around. There is no Docker daemon for the TEI container, no embedding API key in
+the environment, and `api.openai.com`, `api.voyageai.com` and `api.cohere.ai` are
+all unreachable. **These are lexical results only.** See "What is still needed".
+
+Tool descriptions could not be enumerated in bulk either — the connectors are
+claude.ai-hosted with no local endpoint — so the catalogue was run in two
+conditions to bracket the real answer:
+
+- **A — names only:** `description: ""`. The worst case, and what you get from
+  servers that ship terse tools.
+- **B — tokenised names:** description is the identifier split on `_`/`-`
+  ("list pull requests"). This adds **no knowledge** beyond the name; it isolates
+  identifier tokenisation from semantics.
+
+Your live connectors have real prose descriptions, so true performance sits at or
+above condition B.
+
+| Gateway | A: top-1 | A: top-3 | A: empty | B: top-1 | B: top-3 | B: top-5 | B: empty | Median |
+|---|---|---|---|---|---|---|---|---|
+| **ToolHive vMCP** | **21%** | **42%** | **1/43** | 21% | **44%** | **49%** | **1/43** | 3 ms |
+| **MCPProxy** | 2% | 2% | 34/43 | 21% | 30% | 37% | 8/43 | 5 ms |
+| **Nexus** | **23%** | 30% | 6/43 | **23%** | 30% | 33% | 6/43 | 6 ms |
+
+### Scale is the story
+
+Top-1 fell from **69–81% at 16 tools to 21–23% at 412** — the same engines, the
+same query style. Every lexical engine converges on roughly one-in-five once the
+catalogue is realistic. This is the single most important number in this report:
+**lexical tool search does not survive a real catalogue.** Any decision made on
+16-tool demos, including the earlier run in this document, overstates what these
+layers will do for you.
+
+Top-3 is where they still differ, and it matters because the model gets to choose
+from what comes back: ToolHive returns the right tool in the top 3 on **44%** of
+queries versus 30% for both others.
+
+### MCPProxy collapses without descriptions
+
+MCPProxy went from **2% top-1 with 34/43 empty responses** to 21% with 8 empty
+purely by tokenising names into the description field. Its Bleve mapping applies
+a **keyword analyser** to `tool_name`/`full_tool_name` (exact match only), so a
+query like "show me the pull requests waiting on me" cannot reach
+`list_pull_requests` through the name at all — it depends entirely on the
+description text. ToolHive (FTS5 + Porter over name *and* description) and Nexus
+(Tantivy over tokenised name fields) were essentially unchanged between
+conditions.
+
+If any of your MCP servers ship thin descriptions, MCPProxy is close to blind on
+those tools and will tell you nothing rather than guess.
+
+### Empty results remain the sharpest differentiator
+
+Across 43 real queries ToolHive returned nothing **once**. MCPProxy returned
+nothing 8 times in the favourable condition and 34 times in the unfavourable one;
+Nexus 6 times. An empty result gives the model no material to reason with, so it
+either hallucinates a tool name or gives up. A ranked list that is merely
+imperfect is strictly more useful.
+
+### Reproduce it
+
+`docs/mcp-routing-benchmark/` now contains `real_catalogue.py` (the 412-tool
+catalogue and 43 queries), `realsrv.py` (serves any server in either condition)
+and `realbench.py` (scores top-1/3/5, empty-rate and latency).
+
 ## Verdict
 
 | # | Project | Abilities | Code quality (measured) | Use it? |
@@ -216,6 +291,25 @@ riskiest behaviour found in this validation.
 
 And the finding that should drive the decision: **the semantic arm — the thing
 that would fix every failure in this benchmark — is exactly what could not be
-tested.** All five lexical engines failed the same paraphrases. Before committing
-to any of these, run this benchmark against your own tool catalogue with
-embeddings actually enabled. The harness is ~150 lines.
+tested.** All five lexical engines failed the same paraphrases, and on the real
+412-tool catalogue they all fell to ~21–23% top-1.
+
+## What is still needed to finish this
+
+The lexical half is done and is unambiguous. The semantic half is blocked on
+access, not effort — the harness already supports it and ToolHive already
+implements it. Any **one** of these unblocks it:
+
+1. **An OpenAI-compatible embeddings endpoint.** ToolHive takes
+   `optimizer.embeddingProvider: openai` with `embeddingService` +
+   `embeddingModel`, and reads the key from `OPENAI_API_KEY` so it never lands in
+   config. Cheapest option; one env var and a re-run.
+2. **Allowlist `huggingface.co`** at the egress proxy, so `fastembed`/TEI can
+   fetch `BAAI/bge-small-en-v1.5` (ToolHive's default). This is an organisation
+   policy denial — it needs an owner's decision, and should not be worked around.
+3. **A Docker daemon plus `ghcr.io`**, letting ToolHive run
+   `text-embeddings-inference` locally with no external API.
+
+Until one of those exists, the honest position is: **on a 412-tool catalogue,
+none of these layers routes reliably on lexical search alone.** Choosing on the
+strength of the lexical numbers alone would be choosing between 21% and 23%.
