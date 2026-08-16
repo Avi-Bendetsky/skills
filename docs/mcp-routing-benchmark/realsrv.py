@@ -10,6 +10,10 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from real_catalogue import CATALOGUE
+try:
+    from real_descriptions import REAL
+except ImportError:
+    REAL = {}
 
 NAME = sys.argv[1]
 PORT = int(sys.argv[2])
@@ -21,7 +25,10 @@ TOOLS = [
         # MODE=names  -> empty description (worst case)
         # MODE=tokens -> the identifier split into words. Adds NO knowledge beyond
         #                the name itself; isolates identifier tokenisation.
-        "description": ("" if MODE == "names"
+        # MODE=real -> verbatim description from the live connector where we have
+        #              it (whole servers only, never a partial subset).
+        "description": (REAL[NAME][t] if MODE == "real" and NAME in REAL
+                        else "" if MODE == "names"
                         else re.sub(r"[_\-]+", " ", t).strip()),
         "inputSchema": {"type": "object", "properties": {}},
     }

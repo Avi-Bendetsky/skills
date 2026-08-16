@@ -249,6 +249,48 @@ Nexus 6 times. An empty result gives the model no material to reason with, so it
 either hallucinates a tool name or gives up. A ranked list that is merely
 imperfect is strictly more useful.
 
+### Run 3: do real descriptions rescue lexical search? No.
+
+Condition B used tokenised names because the connectors' real prose could not be
+enumerated in bulk. To test whether that understated the engines, one **entire**
+server — Supabase, all 29 tools — was enriched with its verbatim live
+descriptions while the other 13 servers stayed on condition B. Enriching a whole
+server rather than just the correct answers is what keeps this unbiased; describing
+only the right answers would hand them extra matching text and rig the result.
+
+The five Supabase queries, rank of the correct tool:
+
+| Query | vMCP B → real | MCPProxy B → real | Nexus B → real |
+|---|---|---|---|
+| run a SQL query against the database | **1 → 5** | 1 → 1 | 1 → 1 |
+| what tables do we have | **2 → MISS** | 1 → 1 | 1 → 1 |
+| check the database for security problems | **MISS → 1** | **MISS → 1** | MISS → 5 |
+| change the schema safely | MISS → MISS | MISS → MISS | MISS → MISS |
+| make typescript types from the schema | 1 → 1 | 1 → 1 | 1 → 1 |
+
+Across the full 43 queries the net effect was noise: vMCP 21% → 19%, MCPProxy
+21% → 23%, Nexus 23% → 23% top-1.
+
+Three things worth taking from this:
+
+- **Real prose rescued exactly one query**, and only through literal word overlap:
+  `get_advisors` is described as "check for security vulnerabilities", and the query
+  said "check the database for security problems". That is not semantics, it is
+  matching keywords.
+- **Real prose actively hurt ToolHive on two queries.** More text means more
+  competing matches: "run a SQL query" fell from rank 1 to 5 because `query_logs`'
+  description also contains "SQL query", and "what tables do we have" fell off
+  entirely to Miro's `table_create` / `table_list_rows`. Longer descriptions are
+  not monotonically better for BM25.
+- **"change the schema safely" missed everywhere in every condition.**
+  `apply_migration` is described as "Use this when executing DDL operations", and
+  no lexical engine connects "schema safely" to "DDL". That is the irreducible gap,
+  and it is exactly the gap embeddings exist to close.
+
+**Practical consequence: exporting the real catalogue with descriptions is not
+worth anyone's time.** It was measured on a complete server and it does not change
+the ranking or the conclusion.
+
 ### Reproduce it
 
 `docs/mcp-routing-benchmark/` now contains `real_catalogue.py` (the 412-tool
@@ -300,15 +342,25 @@ The lexical half is done and is unambiguous. The semantic half is blocked on
 access, not effort — the harness already supports it and ToolHive already
 implements it. Any **one** of these unblocks it:
 
+**Recommended: option 2.** A routing layer sees every query anyone ever makes.
+Tool descriptions are published schemas and carry little risk, but the *queries*
+are user intent, and option 1 ships that intent to a third party on every search
+in perpetuity. Options 2 and 3 fetch a model once and then keep all inference
+inside the network. Between those, allowlisting one host is far less work than
+standing up a container runtime, and the allowlist can be scoped to a single
+fetch and closed again afterwards.
+
 1. **An OpenAI-compatible embeddings endpoint.** ToolHive takes
    `optimizer.embeddingProvider: openai` with `embeddingService` +
    `embeddingModel`, and reads the key from `OPENAI_API_KEY` so it never lands in
-   config. Cheapest option; one env var and a re-run.
+   config. Cheapest to arrange, but every query leaves the network.
 2. **Allowlist `huggingface.co`** at the egress proxy, so `fastembed`/TEI can
-   fetch `BAAI/bge-small-en-v1.5` (ToolHive's default). This is an organisation
-   policy denial — it needs an owner's decision, and should not be worked around.
+   fetch `BAAI/bge-small-en-v1.5` (ToolHive's default). One-time download, then
+   fully local inference. This is an organisation policy denial — it needs an
+   owner's decision, and should not be worked around.
 3. **A Docker daemon plus `ghcr.io`**, letting ToolHive run
-   `text-embeddings-inference` locally with no external API.
+   `text-embeddings-inference` locally with no external API. Closest to
+   production, heaviest to set up.
 
 Until one of those exists, the honest position is: **on a 412-tool catalogue,
 none of these layers routes reliably on lexical search alone.** Choosing on the
