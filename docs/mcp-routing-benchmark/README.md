@@ -40,6 +40,12 @@ python3 bench.py http://127.0.0.1:18080/mcp retrieve_tools query      # MCPProxy
 python3 bench.py http://127.0.0.1:18090/mcp find_tool tool_description # ToolHive vMCP
 ```
 
+## Picking this up cold
+
+Start with [`HANDOVER.md`](./HANDOVER.md) — background, what is settled, what is
+still open, and why. To resume the work in a fresh session, paste
+[`HANDOVER-PROMPT.md`](./HANDOVER-PROMPT.md) into it.
+
 ## Semantic run (one command, once embeddings are available)
 
 ```bash
