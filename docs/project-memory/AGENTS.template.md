@@ -1,6 +1,6 @@
 # Comprehensive project memory
 
-This is an agent-readable bootstrap and working policy, version 1.
+This is an agent-readable bootstrap and working policy, version 2.
 A Markdown file does not execute an installer. Reading this file does not mean
 the project has been indexed, the hooks are active, or validation has passed.
 
@@ -20,20 +20,27 @@ folder containing other projects, dependencies, caches or customer data.
 
 1. Look for an existing graph catalog, setup guide, graph commands, MCP
    registration, hooks and recorded setup choice.
-2. If the owner already authorized setup for this repository, continue that
-   setup without asking again. If no choice is recorded, offer comprehensive
-   project memory once before installing it. Record enabled, deferred or declined
-   and honor that choice until the owner changes it.
+2. If no choice is recorded, offer comprehensive project memory once and ask
+   before installing anything. Record enabled, deferred or declined and honor
+   that choice until the owner changes it. A recorded `enabled` choice means the
+   workflow is used where it is set up; it is not standing permission to install
+   tooling.
 3. If a verified installation exists, use it. Do not create another index or
    replace its pinned tool revision merely because this template is present.
-4. If setup is incomplete, inspect the actual blocker. Continue useful
+4. If the repository's `graph:*` commands or equivalent documented graph tooling
+   are absent, skip the graph steps below instead of building them, continue the
+   task with ordinary source inspection, and note the skip in the handoff.
+5. If setup is incomplete, inspect the actual blocker. Continue useful
    source/documentation work when permitted, but do not certify missing graphs,
    missing tools or unexecuted checks as available or passed.
 
-The owner has requested this workflow across their existing repositories.
-Apply that authorization within the repository/task scope actually given to
-the agent. Future projects should be offered the option. Batch setup is allowed
-within the owner's confirmed rollout scope; do not enroll unrelated repositories.
+## Setup scope
+
+Install or change graph engines, session hooks, CI checks or developer tooling
+only when the current task is project-memory setup for this repository, or the
+user confirms in the current session. Otherwise use this workflow only where it
+is already set up. Do not enroll other repositories; setup across several
+repositories needs the owner's explicit request for that batch.
 
 ## Reference implementation
 
@@ -60,14 +67,14 @@ migrations, hierarchy definitions, contracts and workflow paths. Adapt those
 extractors to the target sources. Copying MAH's generated files, identifiers,
 counts, fingerprints or database/hierarchy definitions is not installation.
 
-## Bootstrap work required
+## Bootstrap work (only when setup is in scope)
 
-Prepare a small target-repository configuration recording identity, supported
+When setup is in scope (see Setup scope), prepare a small target-repository configuration recording identity, supported
 languages, source and documentation roots, exclusions, tool/model pins, graph
 scopes, setup choice and explicit not-applicable reasons. This is a design
 requirement; this template does not ship a generic config parser or installer.
 
-Implement or adopt a reviewed, repeatable installer that:
+In that case, implement or adopt a reviewed, repeatable installer that:
 - audits and installs locked developer tooling separately from application
   runtime dependencies;
 - verifies tool/model revisions and asset sizes/hashes;
@@ -116,6 +123,9 @@ made, what failed and what remains open so future sessions avoid repeated work.
 
 ## Every coding session
 
+Steps that use graph commands apply only where graph tooling is set up (see
+First use step 4).
+
 1. Follow the project entry gate and run its documented graph session/freshness
    check before relying on graph results. Read the latest handover and decisions.
 2. Query the relevant concepts, then inspect exact symbol IDs or full-path
@@ -146,9 +156,9 @@ made, what failed and what remains open so future sessions avoid repeated work.
 
 ## Enforcement and recovery
 
-Install supported session hooks and merge graph checks into existing pre-commit
-and CI workflows. Configure required merge checks through the repository's
-authorized process. A workflow file alone does not make a check required.
+When setup is in scope, supported session hooks and graph checks may be merged
+into existing pre-commit and CI workflows; do not add them otherwise. Configure
+required merge checks through the repository's authorized process. A workflow file alone does not make a check required.
 
 Checks must reject stale source, missing artifacts, digest mismatches, mismatched
 staged files and interrupted publication. Use a single writer, validate inputs

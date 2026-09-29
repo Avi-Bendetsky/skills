@@ -12,14 +12,15 @@ setup and recorded choice. If neither exists, offer once:
 "Would you like the comprehensive project-memory setup used in MAH, adapted to
 this project, with local semantic memory and graph freshness checks?"
 
-If the owner has already authorized setup for this repository or the current
-rollout, proceed within that scope without asking again. Otherwise record the
-owner's choice as enabled, deferred or declined in the project setup notes.
-Do not repeatedly offer after a recorded decision.
+Ask before installing anything, unless the current task is project-memory setup
+for this repository. Record the owner's choice as enabled, deferred or declined
+in the project setup notes. Do not repeatedly offer after a recorded decision.
 
 For enabled projects, follow the repository's agent instructions, current
 handover and documented graph session/context/impact/change-detection workflow.
-When setup is missing, use the project-memory bootstrap policy and record actual
+Use graph commands only where they are already set up; if the repository's
+graph:* commands or tooling are absent, skip those steps rather than building
+them. Install setup only after the confirmation above, then record actual
 installation/validation results. A template is not an installed graph system.
 
 Preserve existing user/project instructions. Do not index other repositories,
