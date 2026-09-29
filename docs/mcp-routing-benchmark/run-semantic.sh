@@ -24,6 +24,8 @@ WORK="${BENCH_HOME:-$HERE/.work}"
 EMB_PORT="${EMB_PORT:-18200}"
 VMCP_PORT="${VMCP_PORT:-18091}"
 BASE_PORT="${BASE_PORT:-19100}"
+# 0.6 is the fixed protocol. Other values are additional rows, never replacements.
+RATIO="${SEMANTIC_RATIO:-0.6}"
 mkdir -p "$WORK"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
@@ -119,9 +121,9 @@ if [ "$BACKEND" = "auto" ] && [ "$ACTUAL" = "hash" ]; then
 fi
 
 # ---------------------------------------------------------------- vMCP config
-python3 - "$WORK" "$EMB_PORT" <<'PY'
+python3 - "$WORK" "$EMB_PORT" "$RATIO" <<'PY'
 import json, sys
-work, emb = sys.argv[1], sys.argv[2]
+work, emb, ratio = sys.argv[1], sys.argv[2], sys.argv[3]
 m = json.load(open(f"{work}/portmap.json"))
 y = ["name: real-vmcp-semantic", "groupRef: real", "backends:"]
 for s, p in m.items():
@@ -134,7 +136,7 @@ y += ["incomingAuth:", "  type: anonymous",
       "  embeddingProvider: openai",
       f"  embeddingService: http://127.0.0.1:{emb}/v1",
       "  embeddingModel: local-embed",
-      '  hybridSearchSemanticRatio: "0.6"']
+      f'  hybridSearchSemanticRatio: "{ratio}"']
 open(f"{work}/vmcp-semantic.yaml", "w").write("\n".join(y) + "\n")
 PY
 
@@ -152,8 +154,11 @@ done
 BEFORE=$(curl -s -m 5 "http://127.0.0.1:$EMB_PORT/health" |
          python3 -c 'import sys,json;print(json.load(sys.stdin)["requests"])' 2>/dev/null || echo 0)
 
+echo "semantic ratio: $RATIO   thv: $("$THV" version 2>/dev/null | grep -m1 '^ToolHive')"
+# Full per-query output is kept in $WORK so runs can be compared query by query.
 python3 realbench.py "ToolHive-hybrid-${ACTUAL}" \
-        "http://127.0.0.1:$VMCP_PORT/mcp" find_tool tool_description text 2>&1 | tail -2
+        "http://127.0.0.1:$VMCP_PORT/mcp" find_tool tool_description text 2>&1 |
+        tee "$WORK/score.txt" | tail -2
 
 AFTER=$(curl -s -m 5 "http://127.0.0.1:$EMB_PORT/health" |
         python3 -c 'import sys,json;print(json.load(sys.stdin)["requests"])' 2>/dev/null || echo 0)

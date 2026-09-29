@@ -1,0 +1,49 @@
+# Run 4 environment record (captured 2026-09-29T07:22:08Z)
+
+## thv version (full)
+You are running a local build of ToolHive
+
+ToolHive build-8343851e
+Commit: 8343851e8a58086ff0768cd35856e14b11d273fd
+Built: 2026-08-14 17:51:16 UTC
+Go version: go1.26.0
+Platform: linux/amd64
+
+## thv embedded build info
+/opt/thv: go1.26.0
+	path	github.com/stacklok/toolhive/cmd/thv
+	build	vcs.revision=8343851e8a58086ff0768cd35856e14b11d273fd
+	build	vcs.time=2026-08-14T17:51:16Z
+	build	vcs.modified=false
+
+## thv sha256
+01c66d36063a4e739e1aa400787128ed8ecba1e87d776abe6366701015dc5901  /opt/thv
+
+## toolhive source
+8343851e8a58086ff0768cd35856e14b11d273fd
+2026-08-14T19:51:16+02:00 Push skills unsigned until keyless signing lands (#6334)
+go 1.26
+
+## base image / OS / python
+12.13
+Python 3.11.2
+
+## python packages (embedding venv)
+fastembed==0.8.1
+huggingface_hub==1.33.0
+numpy==2.4.6
+onnxruntime==1.30.0
+tokenizers==0.23.2
+
+## model artifact
+
+## container limits
+memory.max=1258291200
+cpu.max=150000 100000
+nproc=2
+## model artifact (fastembed cache: Qdrant/bge-small-en-v1.5-onnx-Q)
+706 13582bcf2effc85b7bf3d3f5532e686bc1c9ce86bb009d10f0ec33cbe92299dd /tmp/fastembed_cache/models--Qdrant--bge-small-en-v1.5-onnx-Q/snapshots/aa8f8b060edb00e03bfdd08813a2949946c8ba55/config.json
+66465124 51f1bd0addd6e859e42c2c8021a5e5461385bb676a649f4b269aa445449f2431 /tmp/fastembed_cache/models--Qdrant--bge-small-en-v1.5-onnx-Q/snapshots/aa8f8b060edb00e03bfdd08813a2949946c8ba55/model_optimized.onnx
+695 5d5b662e421ea9fac075174bb0688ee0d9431699900b90662acd44b2a350503a /tmp/fastembed_cache/models--Qdrant--bge-small-en-v1.5-onnx-Q/snapshots/aa8f8b060edb00e03bfdd08813a2949946c8ba55/special_tokens_map.json
+711396 d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66 /tmp/fastembed_cache/models--Qdrant--bge-small-en-v1.5-onnx-Q/snapshots/aa8f8b060edb00e03bfdd08813a2949946c8ba55/tokenizer.json
+1242 0b29c7bfc889e53b36d9dd3e686dd4300f6525110eaa98c76a5dafceb2029f53 /tmp/fastembed_cache/models--Qdrant--bge-small-en-v1.5-onnx-Q/snapshots/aa8f8b060edb00e03bfdd08813a2949946c8ba55/tokenizer_config.json

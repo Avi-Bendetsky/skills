@@ -1,0 +1,8 @@
+R0 backend=hash fixtures=tokens ratio=0.0 exit=0 seconds=11
+R1a backend=bge fixtures=tokens ratio=0.6 exit=0 seconds=26
+R2a backend=hash fixtures=tokens ratio=0.6 exit=0 seconds=13
+R1b backend=bge fixtures=tokens ratio=0.6 exit=0 seconds=27
+R2b backend=hash fixtures=tokens ratio=0.6 exit=0 seconds=13
+R3 backend=bge fixtures=real ratio=0.6 exit=0 seconds=43
+R4 backend=hash fixtures=real ratio=0.6 exit=0 seconds=13
+R5 backend=bge fixtures=tokens ratio=1.0 exit=0 seconds=28
