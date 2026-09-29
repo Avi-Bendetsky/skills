@@ -6,26 +6,39 @@ import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
-export const VERSION = 1;
-export const SOURCE = 'BAS-More/skills@313901a093244627d08c79b967f8db614aea43f5';
+export const VERSION = 2;
+// The policy text is pinned by policySha256; the source names the template, not a future commit.
+export const SOURCE = 'BAS-More/skills:docs/project-memory/AGENTS.template.md@v2';
 export const POLICY = '.project-memory/POLICY.md';
 export const CONFIG = '.project-memory/config.json';
 export const INPUTS = ['AGENTS.md', 'AGENTS.override.md', 'CLAUDE.md', '.claude/CLAUDE.md', POLICY, CONFIG];
 export const ROOT_INSTRUCTIONS = ['AGENTS.md', 'AGENTS.override.md', 'CLAUDE.md'];
 export const VIEWS = ['structural', 'dependencies', 'modules', 'database', 'processes', 'hierarchy', 'semantic', 'contracts', 'workflows'];
-const BEGIN = '<!-- bas-more-project-memory:v1:start -->';
-const END = '<!-- bas-more-project-memory:v1:end -->';
+// Current markers first; older versions are recognized so a rerun upgrades them in place.
+const MARKERS = [2, 1].map(v => ['<!-- bas-more-project-memory:v' + v + ':start -->', '<!-- bas-more-project-memory:v' + v + ':end -->']);
+const [BEGIN, END] = MARKERS[0];
 export const hash = text => createHash('sha256').update(text).digest('hex');
+
+// Locate the single managed block of any known version; { start, end } spans both markers.
+export function findBlock(text) {
+  let found = null;
+  for (const [begin, end] of MARKERS) {
+    const s = text.indexOf(begin), e = text.indexOf(end);
+    if (s < 0 && e < 0) continue;
+    if (found || s < 0 || e < s || text.indexOf(begin, s + 1) >= 0 || text.indexOf(end, e + 1) >= 0) {
+      throw new Error('Malformed or duplicate project-memory markers; preserve the file for review');
+    }
+    found = { start: s, end: e + end.length };
+  }
+  return found;
+}
 
 export function managedBlock(text, body) {
   const previous = text ?? '';
-  const start = previous.indexOf(BEGIN), end = previous.indexOf(END);
-  if ((start < 0) !== (end < 0) || (start >= 0 && (end < start || previous.indexOf(BEGIN, start + 1) >= 0 || previous.indexOf(END, end + 1) >= 0))) {
-    throw new Error('Malformed or duplicate project-memory markers; preserve the file for review');
-  }
+  const existing = findBlock(previous);
   const nl = previous.includes('\r\n') ? '\r\n' : '\n';
   const block = [BEGIN, ...body.trim().split(/\r?\n/), END].join(nl);
-  if (start >= 0) return previous.slice(0, start) + block + previous.slice(end + END.length);
+  if (existing) return previous.slice(0, existing.start) + block + previous.slice(existing.end);
   // Keep the compact pointer near the beginning and preserve existing frontmatter.
   const frontmatter = /^(?:\uFEFF)?---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.exec(previous);
   const offset = frontmatter?.[0].length ?? (previous.startsWith('\uFEFF') ? 1 : 0);
@@ -35,12 +48,16 @@ const repoBody = [
   '## Project memory',
   "After the repository's mandatory entry and handover reads, read",
   '.project-memory/config.json and .project-memory/POLICY.md from the repository root.',
-  'Setup is enabled by the owner. Continue incomplete setup within this repository',
-  'without asking again; preserve any working graph engine and its recorded pins.',
-  'Before coding, use the documented session/freshness, context and upstream-impact',
-  'workflow. After edits, refresh relevant graphs and record actual validation.',
-  "Graph readiness requires the policy's acceptance evidence; installed rules alone",
-  'do not establish that graphs, semantic retrieval, hooks or integrations work.'
+  'Use the graph workflow only where it is already set up. If graph:* commands or',
+  'graph tooling are absent, skip the graph steps (do not build them) and say so in',
+  'the handoff. Install graph engines, hooks or CI checks only when the current task',
+  'is project-memory setup or the user confirms in this session. Preserve any',
+  'working graph engine and its recorded pins.',
+  'Where set up, use the documented session/freshness, context and upstream-impact',
+  'workflow before coding; after edits, refresh relevant graphs and record actual',
+  "validation. Graph readiness requires the policy's acceptance evidence; installed",
+  'rules alone do not establish that graphs, semantic retrieval, hooks or',
+  'integrations work.'
 ].join('\n');
 
 export function planRepository({ repository, files, policy, aliases = {} }) {
@@ -71,11 +88,11 @@ export function planRepository({ repository, files, policy, aliases = {} }) {
     ...(config ?? {}),
     ...(Object.keys(aliases).length ? { instructionAliases: aliases } : {}),
     schemaVersion: VERSION, managedBy: 'bas-more-project-memory',
-    repository, choice: 'enabled', authorization: 'owner-approved-existing-repository-rollout',
+    repository, choice: 'enabled', authorization: 'install-only-for-setup-task-or-in-session-confirmation',
     policySource: SOURCE, policySha256: hash(installedPolicy), requiredViews: VIEWS,
     graphReadiness: config?.graphReadiness ?? 'requires-repository-validation',
     privacy: 'local-embeddings-only',
-    instructions: 'Follow POLICY.md; preserve existing tooling; record per-view evidence before marking graph setup complete.'
+    instructions: 'Follow POLICY.md; use graph tooling only where set up; install only for a setup task or in-session confirmation; preserve existing tooling; record per-view evidence before marking graph setup complete.'
   };
   if (!Object.keys(aliases).length) delete nextConfig.instructionAliases;
   const configText = formatting && JSON.stringify(config) === JSON.stringify(nextConfig) ? files[CONFIG] : JSON.stringify(nextConfig, null, 2) + '\n';
@@ -87,8 +104,8 @@ export function planRepository({ repository, files, policy, aliases = {} }) {
     const blockHash = formatting?.instructionBlockSha256[target];
     if (blockHash) {
       const current = files[target] ?? '';
-      const start = current.indexOf(BEGIN), end = current.indexOf(END);
-      if (start < 0 || end < start || hash(current.slice(start, end + END.length)) !== blockHash) {
+      const block = findBlock(current);
+      if (!block || hash(current.slice(block.start, block.end)) !== blockHash) {
         throw new Error('Reviewed formatted instruction block was edited: ' + target);
       }
       desired[target] = current;
@@ -204,26 +221,23 @@ export function clientPlan(profile, codexHome = path.join(profile, '.codex')) {
   profile = fs.realpathSync(profile);
   codexHome = fs.realpathSync(codexHome);
   const body = [
-    '## Project memory on every project',
-    "After mandatory project entry and handover reads, inspect the repository's",
-    '.project-memory/config.json, .project-memory/POLICY.md, and existing graph setup.',
-    'Honor an enabled, deferred or declined choice. For enabled projects, read the',
-    'policy on every start/resume; use fresh graph context and upstream impact before',
-    'edits, then change detection, refresh, relevant checks and a factual handover.',
-    'Private local rollout record: ' + path.join(profile, '.project-memory', 'rollouts', '2026-09-14.json'),
-    'Local installer: ' + fileURLToPath(import.meta.url),
-    'The owner authorized eligible existing repositories recorded in that private registry.',
-    'Honor archived, read-only and protected exclusions. Public aggregate counts are not an enrollment list.',
-    'An eligible matching repository needs no new approval. Preserve recorded deferred/declined choices.',
-    'When its policy is missing, obtain the approved policy/installer from BAS-More/skills',
-    'and install it with an explicit repository root, preserving existing rules and work.',
-    'For a new project outside that rollout with no setup or recorded choice, offer once:',
+    '## Project memory (opt-in)',
+    "After mandatory project entry and handover reads, check for the repository's",
+    '.project-memory/config.json and .project-memory/POLICY.md and existing graph setup.',
+    'Honor a recorded enabled, deferred or declined choice. For enabled projects, read',
+    'the policy on start/resume and use its graph session/context/impact workflow only',
+    'where that tooling is already set up. If graph:* commands or graph tooling are',
+    'absent, skip the graph steps (do not build them) and say so in the handoff.',
+    'Do not install policies, graph engines, hooks or CI checks unless the current task',
+    'is project-memory setup or the user confirms in this session.',
+    'For a project with no setup and no recorded choice, you may offer once:',
     '"Would you like MAH-style comprehensive project memory, adapted to this project,',
-    'with local semantic memory and graph freshness checks?" Record the answer in',
-    'project setup notes and do not repeat the offer after enabled/deferred/declined.',
-    "Preserve a verified existing graph engine. Finish missing setup using the project's",
-    'stack and the policy acceptance checks. Report unavailable tools or failed checks',
-    'explicitly; continue useful permitted work. Keep private source and embeddings local.',
+    'with local semantic memory and graph freshness checks?" Ask before installing',
+    'anything; record the answer in project setup notes and do not repeat the offer',
+    'after enabled/deferred/declined.',
+    'Local installer, for use only after that confirmation: ' + fileURLToPath(import.meta.url),
+    'Preserve existing rules, work and any verified graph engine. Report unavailable',
+    'tools or failed checks explicitly. Keep private source and embeddings local.',
     'Installed rules do not prove graph generation, hook execution or integration tests passed.'
   ].join('\n');
   const specs = [
@@ -233,7 +247,7 @@ export function clientPlan(profile, codexHome = path.join(profile, '.codex')) {
   return specs.map(({ root, file }) => {
     const before = readText(root, file);
     // Append global rules outside existing locked sections; preserve all original bytes.
-    const after = before?.includes(BEGIN) ? managedBlock(before, body) : (before ?? '') + ((before ?? '').endsWith('\n') ? '\n' : '\n\n') + [BEGIN, body, END, ''].join('\n');
+    const after = findBlock(before ?? '') ? managedBlock(before, body) : (before ?? '') + ((before ?? '').endsWith('\n') ? '\n' : '\n\n') + [BEGIN, body, END, ''].join('\n');
     return { root, repository: 'local-client-rules', changes: before === after ? [] : [{ file, before, after, beforeHash: before == null ? null : hash(before), afterHash: hash(after) }] };
   });
 }

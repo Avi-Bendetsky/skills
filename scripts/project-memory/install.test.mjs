@@ -5,7 +5,7 @@ import os from 'node:os';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { planRepository, managedBlock, applyPlan, rollback, readText, clientPlan, readRepository, INPUTS, POLICY, CONFIG } from './install.mjs';
+import { planRepository, managedBlock, findBlock, applyPlan, rollback, readText, clientPlan, readRepository, hash, INPUTS, POLICY, CONFIG } from './install.mjs';
 
 const policy = '# Comprehensive project memory\nTest policy with nine required views.\n';
 const repository = 'BAS-More/test-fixture';
@@ -35,7 +35,7 @@ test('preserves all existing instructions, frontmatter, overrides and hook bytes
   for (const [file, content] of Object.entries(old)) {
     const after = fs.readFileSync(path.join(root, file), 'utf8');
     if (file.includes('pre-commit')) assert.equal(after, content);
-    else assert.equal(after.replace(/<!-- bas-more-project-memory:v1:start -->[\s\S]*?<!-- bas-more-project-memory:v1:end -->\r?\n\r?\n/, ''), content);
+    else assert.equal(after.replace(/<!-- bas-more-project-memory:v2:start -->[\s\S]*?<!-- bas-more-project-memory:v2:end -->\r?\n\r?\n/, ''), content);
   }
   assert.ok(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8').startsWith('\uFEFF---\r\nname: original\r\n---\r\n'));
   assert.equal(makePlan(root).changes.length, 0);
@@ -153,7 +153,7 @@ function formattedFixture(root) {
   for (const file of ['AGENTS.md', 'CLAUDE.md']) {
     const formatted = readText(root, file).replace('## Project memory\n', '## Project memory\n\n');
     fs.writeFileSync(path.join(root, file), formatted);
-    const block = formatted.match(/<!-- bas-more-project-memory:v1:start -->[\s\S]*?<!-- bas-more-project-memory:v1:end -->/)[0];
+    const block = formatted.match(/<!-- bas-more-project-memory:v2:start -->[\s\S]*?<!-- bas-more-project-memory:v2:end -->/)[0];
     instructionBlockSha256[file] = digest(block);
   }
   const config = JSON.parse(readText(root, CONFIG));
@@ -176,6 +176,59 @@ test('rejects stale formatting receipts, policy edits and edited formatted instr
   assert.throws(() => makePlan(root), /policy was edited/);
   const second = fixture(t);
   formattedFixture(second);
-  fs.writeFileSync(path.join(second, 'AGENTS.md'), readText(second, 'AGENTS.md').replace('Setup is enabled', 'Skip setup'));
+  fs.writeFileSync(path.join(second, 'AGENTS.md'), readText(second, 'AGENTS.md').replace('Use the graph workflow', 'Always build the graph workflow'));
   assert.throws(() => makePlan(second), /formatted instruction block was edited/);
+});
+
+const v1Block = nl => ['<!-- bas-more-project-memory:v1:start -->', '## Project memory',
+  'Setup is enabled by the owner. Continue incomplete setup within this repository',
+  'without asking again; preserve any working graph engine and its recorded pins.',
+  '<!-- bas-more-project-memory:v1:end -->'].join(nl);
+test('upgrades a v1 repository installation to v2 in place and a rerun is a no-op', t => {
+  const root = fixture(t);
+  const v1Policy = '# Comprehensive project memory\nversion 1 policy\n';
+  fs.writeFileSync(path.join(root, 'AGENTS.md'), '﻿---\r\nname: kept\r\n---\r\n' + v1Block('\r\n') + '\r\n\r\nRead HANDOVER first.\r\n');
+  fs.writeFileSync(path.join(root, 'CLAUDE.md'), 'Before.\n' + v1Block('\n') + '\nAfter.\n');
+  fs.mkdirSync(path.join(root, '.project-memory'));
+  fs.writeFileSync(path.join(root, POLICY), v1Policy);
+  fs.writeFileSync(path.join(root, CONFIG), JSON.stringify({ schemaVersion: 1, managedBy: 'bas-more-project-memory', repository, choice: 'enabled',
+    authorization: 'owner-approved-existing-repository-rollout', policySha256: hash(v1Policy), graphReadiness: 'requires-repository-validation' }));
+  applyPlan(root, makePlan(root), path.join(root, 'backups'));
+  const agents = readText(root, 'AGENTS.md'), claude = readText(root, 'CLAUDE.md');
+  for (const text of [agents, claude]) {
+    assert.ok(!text.includes('v1:start') && !text.includes('Setup is enabled by the owner'));
+    assert.ok(text.includes('<!-- bas-more-project-memory:v2:start -->') && text.includes('Install graph engines, hooks or CI checks only when'));
+  }
+  assert.ok(agents.startsWith('﻿---\r\nname: kept\r\n---\r\n<!-- bas-more-project-memory:v2:start -->\r\n'));
+  assert.ok(agents.endsWith('\r\n\r\nRead HANDOVER first.\r\n'));
+  assert.ok(claude.startsWith('Before.\n') && claude.endsWith('\nAfter.\n'));
+  const config = JSON.parse(readText(root, CONFIG));
+  assert.equal(config.schemaVersion, 2);
+  assert.equal(config.policySha256, hash(policy));
+  assert.equal(config.authorization, 'install-only-for-setup-task-or-in-session-confirmation');
+  assert.equal(readText(root, POLICY), policy);
+  assert.equal(makePlan(root).changes.length, 0);
+});
+test('rejects mixed or duplicate v1/v2 markers', () => {
+  assert.throws(() => findBlock(v1Block('\n') + '\n' + managedBlock('', 'x')), /duplicate/);
+  assert.throws(() => findBlock('<!-- bas-more-project-memory:v1:start -->\n<!-- bas-more-project-memory:v2:end -->'), /Malformed/);
+  assert.equal(findBlock('no block'), null);
+});
+test('upgrades v1 client rules to opt-in v2 rules without self-enrolment', t => {
+  const profile = fixture(t);
+  fs.mkdirSync(path.join(profile, '.codex'));
+  fs.mkdirSync(path.join(profile, '.claude'));
+  const legacy = 'User rules\n\n' + ['<!-- bas-more-project-memory:v1:start -->', '## Project memory on every project',
+    'An eligible matching repository needs no new approval.', '<!-- bas-more-project-memory:v1:end -->', ''].join('\n') + 'Trailing rule\n';
+  fs.writeFileSync(path.join(profile, '.claude', 'CLAUDE.md'), legacy);
+  fs.writeFileSync(path.join(profile, '.codex', 'AGENTS.md'), legacy);
+  for (const plan of clientPlan(profile)) applyPlan(plan.root, plan, path.join(profile, 'backups'));
+  for (const file of [path.join(profile, '.claude', 'CLAUDE.md'), path.join(profile, '.codex', 'AGENTS.md')]) {
+    const text = fs.readFileSync(file, 'utf8');
+    assert.ok(text.startsWith('User rules\n\n<!-- bas-more-project-memory:v2:start -->') && text.endsWith('\nTrailing rule\n'));
+    assert.equal(text.match(/bas-more-project-memory:v\d:start/g).length, 1);
+    assert.ok(!/needs no new approval|obtain the approved policy/.test(text));
+    assert.ok(text.includes('Ask before installing'));
+  }
+  assert.ok(clientPlan(profile).every(plan => plan.changes.length === 0));
 });

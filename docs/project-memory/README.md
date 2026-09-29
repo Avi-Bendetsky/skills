@@ -5,15 +5,24 @@ to install repository instructions and configure the Codex and Claude user rules
 Installation records an enabled setup choice; each project still needs its graph
 bootstrap and acceptance checks before graph readiness is complete.
 
+The current policy is version 2 (`bas-more-project-memory:v2` markers). It does not
+grant standing setup authorization: agents install graph engines, hooks or CI checks
+only when the current task is project-memory setup or the user confirms in the
+session, use the workflow only where it is already set up, and skip graph steps
+where a repository has no graph:* commands or tooling. The client rules are opt-in
+guidance that ask before installing. To roll v2 out, rerun the installer per
+repository and `clients --apply` per machine; see
+[INSTALL.md](INSTALL.md#upgrading-from-v1).
+
 ## Files to use
 
 - [INSTALL.md](INSTALL.md): plan, install, status, client configuration and recovery commands.
 - [AGENTS.template.md](AGENTS.template.md): approved per-project bootstrap, routine memory use,
   nine-view coverage, privacy and acceptance policy. The installer preserves it in
   `.project-memory/POLICY.md` and inserts compact pointers into existing instructions.
-- [GLOBAL.template.md](GLOBAL.template.md): the original future-project offer template.
+- [GLOBAL.template.md](GLOBAL.template.md): the future-project offer template.
   Use the installer client command to select the actual active Codex/Claude file.
-- [rollouts/2026-09-14.json](rollouts/2026-09-14.json): aggregate rollout snapshot.
+- [rollouts/2026-09-14.json](rollouts/2026-09-14.json): aggregate v1 rollout snapshot.
   Detailed repository inventories are kept privately.
 
 A repository file is read by clients that support that instruction mechanism; it
@@ -50,6 +59,9 @@ Keep tooling pinned and review upgrades; preserve existing hooks and protection 
 - All eleven tests, including Windows Git instruction links and reviewed formatting, passed on
   Linux and Windows CI: [verified run](https://github.com/BAS-More/skills/actions/runs/34859254533).
 - A later local repeat timed out; no pass is claimed for that attempt.
+- Version 2: 14 installer tests (including v1-to-v2 repository and client-rule
+  upgrades) passed locally on Linux with Node 22; this repository's own files were
+  upgraded by rerunning the installer, and a second run reported no changes.
 - Codex's active override and Claude's user instruction file were written and
   hash-verified on AVISURFACE. A fresh interactive agent session was not exercised.
 - Repository changes are read back exactly and compared with their planned file set;
