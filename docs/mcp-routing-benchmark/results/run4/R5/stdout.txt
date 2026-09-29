@@ -1,0 +1,7 @@
+catalogue: 412 tools across 14 servers
+fixtures: 14 (tokens)
+embedding backend: bge
+semantic ratio: 1.0   thv: You are running a local build of ToolHive
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ToolHive-hybrid-bge: top-1 19/43 (44%)  top-3 24/43 (56%)  top-5 26/43 (60%)  empty-results 0/43  errors 0/43  median 74ms
+embedding requests during run: 44 (0 would mean the semantic arm never ran)

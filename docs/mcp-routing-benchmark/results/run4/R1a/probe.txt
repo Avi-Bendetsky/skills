@@ -1,0 +1,12 @@
+vMCP tool surface: ['call_tool', 'find_tool']
+
+### query: 'change the schema safely'
+--- raw (first 1500 chars):
+{"tools":[{"annotations":{},"description":"update project deployment protection","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"Vercel_update_project_deployment_protection"},{"annotations":{},"description":"section update metadata","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"Miro_section_update_metadata"},{"annotations":{},"description":"table update view","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"Miro_table_update_view"},{"annotations":{},"description":"change toolbar thread resolve status","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"Vercel_change_toolbar_thread_resolve_status"}],"token_metrics":{"baseline_tokens":15494,"returned_tokens":167,"savings_percent":98.92216341809733}}
+--- names_in parse: [('Vercel', 'update_project_deployment_protection'), ('Miro', 'section_update_metadata'), ('Miro', 'table_update_view'), ('Vercel', 'change_toolbar_thread_resolve_status')]
+
+### query: 'show me the pull requests waiting on me'
+--- raw (first 1500 chars):
+{"tools":[{"annotations":{},"description":"list pull requests","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"github_list_pull_requests"},{"annotations":{},"description":"update pull request","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"github_update_pull_request"},{"annotations":{},"description":"search pull requests","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"github_search_pull_requests"},{"annotations":{},"description":"create pull request","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"github_create_pull_request"}],"token_metrics":{"baseline_tokens":15494,"returned_tokens":151,"savings_percent":99.02542919839938}}
+--- names_in parse: [('github', 'list_pull_requests'), ('github', 'update_pull_request'), ('github', 'search_pull_requests'), ('github', 'create_pull_request')]
+embed health after probe: {"status": "ok", "backend": "bge", "dim": 384, "requests": 3, "texts": 414}

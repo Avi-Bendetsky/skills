@@ -1,0 +1,12 @@
+vMCP tool surface: ['call_tool', 'find_tool']
+
+### query: 'change the schema safely'
+--- raw (first 1500 chars):
+{"tools":[{"annotations":{},"description":"change toolbar thread resolve status","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"Vercel_change_toolbar_thread_resolve_status"}],"token_metrics":{"baseline_tokens":15494,"returned_tokens":46,"savings_percent":99.7031108816316}}
+--- names_in parse: [('Vercel', 'change_toolbar_thread_resolve_status')]
+
+### query: 'show me the pull requests waiting on me'
+--- raw (first 1500 chars):
+{"tools":[{"annotations":{},"description":"create pull request","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"github_create_pull_request"},{"annotations":{},"description":"list pull requests","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"github_list_pull_requests"},{"annotations":{},"description":"merge pull request","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"github_merge_pull_request"},{"annotations":{},"description":"pull request read","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"github_pull_request_read"},{"annotations":{},"description":"search pull requests","inputSchema":{"properties":{},"required":[],"type":"object"},"name":"github_search_pull_requests"}],"token_metrics":{"baseline_tokens":15494,"returned_tokens":187,"savings_percent":98.79308119271977}}
+--- names_in parse: [('github', 'create_pull_request'), ('github', 'list_pull_requests'), ('github', 'merge_pull_request'), ('github', 'pull_request_read'), ('github', 'search_pull_requests')]
+embed health after probe: {"status": "ok", "backend": "hash", "dim": 384, "requests": 1, "texts": 412}

@@ -1,0 +1,7 @@
+catalogue: 412 tools across 14 servers
+fixtures: 14 (tokens)
+embedding backend: hash
+semantic ratio: 0.0   thv: You are running a local build of ToolHive
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ToolHive-hybrid-hash: top-1 9/43 (21%)  top-3 19/43 (44%)  top-5 21/43 (49%)  empty-results 1/43  errors 0/43  median 7ms
+embedding requests during run: 1 (0 would mean the semantic arm never ran)

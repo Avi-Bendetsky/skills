@@ -1,5 +1,10 @@
 # Handover prompt
 
+> **Completed 2026-09-29.** This task was carried out as Run 4; see
+> [`PROTOCOL-run4.md`](./PROTOCOL-run4.md) and Run 4 in
+> `docs/mcp-tool-routing-layer-validation.md`. Keep this prompt as a record. Do not
+> re-run it. The optional follow-ups are listed under "Status" in the validation doc.
+
 Paste everything below the line into a fresh Claude Code session on
 `Avi-Bendetsky/skills`. It is self-contained.
 

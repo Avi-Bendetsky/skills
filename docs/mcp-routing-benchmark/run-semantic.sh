@@ -154,7 +154,7 @@ done
 BEFORE=$(curl -s -m 5 "http://127.0.0.1:$EMB_PORT/health" |
          python3 -c 'import sys,json;print(json.load(sys.stdin)["requests"])' 2>/dev/null || echo 0)
 
-echo "semantic ratio: $RATIO   thv: $("$THV" version 2>/dev/null | head -1)"
+echo "semantic ratio: $RATIO   thv: $("$THV" version 2>/dev/null | grep -m1 '^ToolHive')"
 # Full per-query output is kept in $WORK so runs can be compared query by query.
 python3 realbench.py "ToolHive-hybrid-${ACTUAL}" \
         "http://127.0.0.1:$VMCP_PORT/mcp" find_tool tool_description text 2>&1 |

@@ -42,15 +42,15 @@ python3 bench.py http://127.0.0.1:18090/mcp find_tool tool_description # ToolHiv
 
 ## Picking this up cold
 
-Start with [`HANDOVER.md`](./HANDOVER.md) — background, what is settled, what is
-still open, and why. To resume the work in a fresh session, paste
-[`HANDOVER-PROMPT.md`](./HANDOVER-PROMPT.md) into it.
+Start with [`HANDOVER.md`](./HANDOVER.md) — background, results and why.
+Nothing is outstanding; [`HANDOVER-PROMPT.md`](./HANDOVER-PROMPT.md) is completed
+and kept as a record.
 
 ## Semantic run (one command, once embeddings are available)
 
 ```bash
 bash run-semantic.sh bge          # real embeddings
-bash run-semantic.sh hash         # lexical control
+bash run-semantic.sh hash         # non-semantic plumbing control
 bash run-semantic.sh auto         # bge if the model loads, else hash
 ```
 
@@ -67,13 +67,19 @@ rather than assume it.
 
 ### The two backends
 
-- **`bge`** — `fastembed` with `BAAI/bge-small-en-v1.5`, ToolHive's default model.
-  Real sentence embeddings. Needs a one-time model download from `huggingface.co`.
+- **`bge`** — `fastembed` with `BAAI/bge-small-en-v1.5`, the model ToolHive defaults
+  to. `fastembed` serves a quantized ONNX export of it
+  (`Qdrant/bge-small-en-v1.5-onnx-Q`), not the full-precision weights ToolHive's
+  TEI path would use. Real sentence embeddings. Needs a one-time model download
+  from `huggingface.co`.
 - **`hash`** — deterministic hashed bag-of-words in 384 dims. **Not semantic** by
   construction: `cos("refund a charge", "give the money back") = 0.0`. It exists to
-  prove the wiring without the model, and as a control — if hybrid-with-`hash`
-  scores like plain lexical while hybrid-with-`bge` scores much better, the gain is
-  attributable to semantics rather than to the hybrid plumbing.
+  prove the wiring without the model, and as a control — if hybrid-with-`bge`
+  scores much better than hybrid-with-`hash`, the gain is attributable to semantics
+  rather than to the hybrid plumbing. In Run 4 the `hash` control scored *below*
+  pure lexical on top-3 (its top slots are dominated by hash collisions and ties),
+  so it rules out the plumbing but overstates the size of the effect. Compare
+  against the ratio-0.0 lexical row for magnitude.
 
 ### Status of the rig
 
@@ -84,13 +90,28 @@ are the control's, not a semantic result — spending 60% of the result budget o
 non-semantic embedder costs top-3, exactly as expected. Median latency rises from
 3 ms to 48 ms, which is the embedding round-trip per query.
 
-Everything except the model weights is proven. Only ToolHive has a semantic mode;
-MCPProxy is lexical-only in shipped code and Nexus is Tantivy-only, so this run
-answers "does hybrid beat lexical" rather than being a three-way comparison.
+Only ToolHive has a semantic mode; MCPProxy is lexical-only in shipped code and
+Nexus is Tantivy-only, so this rig answers "does hybrid beat lexical" rather than
+being a three-way comparison.
+
+**Run 4 (2026-09-29) ran the `bge` backend end to end:** 44% top-1, 56% top-3,
+60% top-5, 0/43 empty, 44 embedding requests. The protocol is in
+[`PROTOCOL-run4.md`](./PROTOCOL-run4.md), per-row outputs in `results/run4/`, and
+the write-up is Run 4 in the validation doc.
+
+Extra knobs added for Run 4:
+
+- `SEMANTIC_RATIO=<0.0-1.0>` overrides the `0.6` protocol value, for additional
+  rows only.
+- Each run keeps its full per-query output in `$WORK/score.txt`.
+- `python3 compare.py <score-a.txt> <score-b.txt>` gives a paired per-query
+  comparison with an exact McNemar test.
 
 ### Getting the model
 
-`huggingface.co` is blocked by the environment's network policy. To allow it, open
+In a Claude Code **cloud** session, `huggingface.co` is blocked by the environment's
+network policy. On an ordinary Linux host or container it is usually reachable,
+which is how Run 4 was done. To allow it in a cloud environment, open
 [claude.ai/code](https://claude.ai/code), click the cloud icon above the message
 box, edit the environment, set **Network access** to **Custom**, and add:
 
@@ -132,9 +153,12 @@ It does not assume any path outside its own directory.
 Point it at the two things it can't build for you:
 
 ```bash
-git clone --depth 1 https://github.com/stacklok/toolhive && \
-  (cd toolhive && go build -o thv ./cmd/thv)
-python3 -m venv .venv && .venv/bin/pip install fastembed
+# Pinned to the Run 4 versions. A full clone is needed to check out the commit;
+# Go 1.26 is fetched automatically by GOTOOLCHAIN=auto.
+git clone https://github.com/stacklok/toolhive && \
+  git -C toolhive checkout 8343851e8a58086ff0768cd35856e14b11d273fd && \
+  (cd toolhive && GOTOOLCHAIN=auto go build -o thv ./cmd/thv)
+python3 -m venv .venv && .venv/bin/pip install fastembed==0.8.1
 
 THV=$PWD/toolhive/thv EMBED_PYTHON=$PWD/.venv/bin/python \
   ./run-semantic.sh bge tokens
@@ -143,5 +167,7 @@ THV=$PWD/toolhive/thv EMBED_PYTHON=$PWD/.venv/bin/python \
 Both are checked up front, and a missing one prints the exact command to fix it
 rather than failing partway through.
 
-The simpler path is to let a Claude Code cloud session run it — the toolchain is
-already there, and only the `huggingface.co` allowlist is missing.
+A Claude Code cloud session already has the toolchain but needs the
+`huggingface.co` allowlist (see "Getting the model"). Run 4 instead used a plain
+Linux container (`golang:1.24-bookworm` plus `python3-venv`), which needs no
+allowlist change.

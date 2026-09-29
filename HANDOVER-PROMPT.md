@@ -1,5 +1,14 @@
 # Continuation prompt — BAS-More/skills
 
+> **Update 2026-09-29: the routing-benchmark objective below is complete** (Run 4 in
+> `docs/mcp-tool-routing-layer-validation.md`; summary in `HANDOVER.md` → "Session
+> 2026-09-29"). Do not re-run it. What remains:
+> 1. Get the owner's decision on the `.claude-plugin/plugin.json` gap: the four
+>    `skills/misc/` skills are missing.
+> 2. Owner review and merge of the Run 4 PR. PR #12 (project-memory v2) is already
+>    merged.
+> 3. The project-memory continuation sections at the end of this prompt.
+
 You are continuing Codex thread `01a03bc7-0d2a-75e2-8c3e-c9d125ded17e` in `https://github.com/BAS-More/skills`.
 
 Before doing anything:

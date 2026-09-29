@@ -1,7 +1,7 @@
 # BAS-More/skills — Active Codex handover
 
-**Status:** ACTIVE
-**Updated:** 2026-08-26 (Australia/Melbourne)
+**Status:** ACTIVE (routing benchmark finished 2026-09-29; project-memory continuation and one index gap remain, see "Session 2026-09-29")
+**Updated:** 2026-09-29 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
 **Primary workstream:** semantic MCP/tool-routing benchmark and skills repository maintenance
@@ -11,6 +11,10 @@
 The Codex thread transcript is not available through this GitHub checkout or the connected repository API. This handover is reconstructed from the current repository, the retained benchmark handover under `docs/mcp-routing-benchmark/`, branches, commits, and PR history. Any thread-local change that was never committed is **not recovered** by this document.
 
 ## Executive state
+
+> **2026-09-29:** the routing benchmark described below is **finished**. See
+> "Session 2026-09-29" at the end of this file. The P0-P4 list is kept as the record
+> of what was required.
 
 The repository-level skill organization is established and governed by the existing project rules. The most important unfinished work is not ordinary skill curation: it is the routing evaluation documented in:
 
@@ -203,3 +207,80 @@ reviewed Markdown content, preserved existing instructions and source/block hash
 receipts. Repository CI remains authoritative for their remaining gates. MAH's local
 session freshness check passed with all nine views and fingerprint
 `03424bdb1964993a731980ad3c6424c63de74112bb4adecee92148ffeb6a26e0`.
+
+
+## Session 2026-09-29 — routing benchmark finished (Claude Code, branch `claude/go-bd9ae8`)
+
+**P0-P4 of the routing benchmark are done.** The semantic run happened.
+
+- **P0 (environment).** `main` was `83d2b74` at session start (now `27cf1e4`, after
+  PR #12). `claude/mcp-tool-calling-layer-9g9q8j`
+  no longer exists on the remote; its last PR head (#8, `9d77188`) is an ancestor of
+  `main`, so nothing on it was lost. The Codex thread transcript remains unrecoverable
+  and is declared so. The one unique commit found elsewhere, `eb3aa72` on
+  `docs/drop-deprecated-qa-reference`, landed in `main` as `8e24f26` via PR #12.
+- **P1 (blocker).** From the owner's PC, `huggingface.co` returned 307 → 200. The
+  denial applied only to the Claude Code cloud environments. No mirror or substitute
+  model was used.
+- **P2 (runs).** The protocol was pre-registered and pushed before any score
+  (`c378438`, `ab3199a`). All rows ran in a Linux container (`golang:1.24-bookworm`,
+  Python 3.11.2, Go 1.26.0 via `GOTOOLCHAIN`) on the owner's remote Docker context
+  `neko`, capped at 1.5 CPU / 1.2 GB because that host also runs staging services.
+  ToolHive was pinned to `8343851e`. The model was `fastembed` 0.8.1 →
+  `Qdrant/bge-small-en-v1.5-onnx-Q@aa8f8b06`.
+- **Results.** The build reproduced both published baselines exactly (lexical
+  21/44/49%, 1/43 empty; hash control 21/33/44%, 0/43). bge at the protocol ratio
+  0.6 scored **44% top-1, 56% top-3, 60% top-5, 0/43 empty**, with 44 embedding
+  requests. Repeats were identical. McNemar: vs hash control p = 0.006 (top-1 and
+  top-3); vs pure lexical top-1 p = 0.021, top-3 p = 0.18. "change the schema
+  safely" is still missed.
+- **Finding.** ToolHive's hybrid search is semantic-first slot splitting, not score
+  fusion (`hybridSearchLimits` / `mergeResults` in
+  `pkg/vmcp/optimizer/internal/toolstore/sqlite_store.go`).
+- **P3/P4.** The pre-registered verdict is "semantic materially beats lexical". It
+  clears the 10-point bar against pure lexical by one query, and its significance
+  test was met only against the non-semantic control. The recommendation is
+  unchanged (the top-3 bar of 65% was not met). Written up as "Run 4" in
+  `docs/mcp-tool-routing-layer-validation.md`. Per-row outputs, raw probe
+  transcripts and `environment.txt` (build info, model hashes, container limits)
+  are in `docs/mcp-routing-benchmark/results/run4/`.
+- **Review.** An adversarial pass (4 independent reviewers: evidence, source
+  mechanism, protocol compliance, statistics) raised 39 findings before commit. A
+  second pass (2 reviewers) checked the fixes and raised 17 more, all low or
+  medium. All were corrected or disclosed. The most serious was that the first
+  draft had drifted from the pre-registered recommendation. Only per-row Wilson
+  intervals are reported, not intervals on the paired differences; the write-up
+  says so. The harness version line, which printed a banner, was fixed after the
+  runs; the fix does not affect scoring.
+
+Definition of done: items 1-4 are met. **Item 5 is not:** `.claude-plugin/plugin.json`
+lists none of the four `skills/misc/` skills (`git-guardrails-claude-code`,
+`migrate-to-shoehorn`, `scaffold-exercises`, `setup-pre-commit`), although
+`CLAUDE-PROJECT-RULES.md` requires it. This predates this session; changing it
+alters what the published plugin installs, so it is left for the owner. Item 6
+depends on this branch's PR checks.
+
+Also this session: PR #12 (`project-memory-v2`: task-scoped project-memory wording
+plus `eb3aa72`) was applied and tested here, then pushed, opened and merged by the
+owner on 2026-09-29 (merge `27cf1e4`). Its installer tests passed 14/14 locally
+before the push. The greyrok
+transfer branch it came from is deleted.
+
+Project memory: this repository has no `graph:*` commands or graph tooling, so the
+graph steps were skipped. No graph was built or claimed.
+
+State Git cannot show: the benchmark container `routing-bench-bd9ae8` and the two
+images pulled for it (`golang:1.24-bookworm`, `alpine:3`) were removed from the
+`neko` Docker host after the evidence was copied into `results/run4/`. Verified
+with `docker ps -a` and `docker images`; the host's pre-existing `alpine:latest`
+was left alone.
+
+Remaining work, in order:
+
+1. Owner decision on the `plugin.json` / `misc` gap (add the four entries, or change
+   the rule).
+2. Owner review and merge of this branch's PR (Run 4).
+3. The independent project-memory continuation above (per-project graph bootstrap
+   and acceptance) is unchanged by this session.
+4. Optional routing follow-ups (rank fusion, larger model, current ToolHive HEAD)
+   are listed under "Status" in the validation doc. None is required.

@@ -1,13 +1,21 @@
 # Handover: MCP tool-routing layer evaluation
 
-**Status:** research complete, one measurement blocked on an access change.
-**Last worked:** 16 August 2026.
-**Blocked on:** `huggingface.co` is denied by the cloud environment's network policy,
-so the semantic (embeddings) benchmark has never run.
+**Status:** complete. The semantic measurement ran on 29 September 2026 (Run 4).
+**Last worked:** 29 September 2026.
 
-If you only read one thing: **the lexical conclusion is finished and actionable.
-The open question is whether embeddings beat it, and clearing that needs a UI
-change nobody has made yet.** Everything else is built, tested and merged.
+If you only read one thing: **the pre-registered verdict is "semantic materially
+beats lexical" (top-3 56% vs 33% for the non-semantic control, p = 0.006), and the
+recommendation stands:** Anthropic's tool search for selection, with ToolHive or
+MCPProxy only for running, authenticating and isolating servers. Against pure
+lexical search, embeddings double top-1 (21% → 44%), but the top-3 gain (44% → 56%)
+is not significant. The full result is
+[Run 4 in the validation doc](../mcp-tool-routing-layer-validation.md#run-4-semantic-2026-09-29),
+run under the pre-registered [`PROTOCOL-run4.md`](./PROTOCOL-run4.md).
+
+The `huggingface.co` blocker described in §4-§5 applied only to the Claude Code
+cloud environments. Run 4 ran on a Linux container where the model could be fetched
+once and then run locally. §4-§5 are kept as the record of how the blocker was
+diagnosed.
 
 ---
 
@@ -24,10 +32,11 @@ change nobody has made yet.** Everything else is built, tested and merged.
 | Artefact | What it is |
 |---|---|
 | [`../mcp-tool-routing-layer-evaluation.md`](../mcp-tool-routing-layer-evaluation.md) | Top 10 options, assessed by cloning and reading source, not READMEs |
-| [`../mcp-tool-routing-layer-validation.md`](../mcp-tool-routing-layer-validation.md) | Build + test results for every candidate, and three benchmark runs |
-| `./` (this directory) | The benchmark harness, the real 412-tool catalogue, and the semantic rig |
+| [`../mcp-tool-routing-layer-validation.md`](../mcp-tool-routing-layer-validation.md) | Build + test results for every candidate, and four benchmark runs (Run 4 = semantic) |
+| `./` (this directory) | The benchmark harness, the real 412-tool catalogue, the semantic rig, `PROTOCOL-run4.md`, `compare.py` and `results/run4/` |
 
-All merged to `main` via PRs #1, #3, #4, #5, #7.
+The Runs 1-3 artefacts were merged to `main` via PRs #1, #3, #4, #5, #7, #8 and #9
+(scorer audit). Run 4 is on branch `claude/go-bd9ae8`.
 
 ---
 
@@ -55,7 +64,8 @@ Any decision taken from a small demo overstates these layers by 3-4x.
 
 **Real descriptions do not rescue it.** Measured by enriching one complete server
 (Supabase, all 29 tools) with verbatim live descriptions: net effect across 43
-queries was noise (21%→19%, 21%→23%, 23%→23%). Do not spend time exporting the real
+queries was noise (post-audit top-1: ToolHive 21%→19%, MCPProxy 26%→28%, Nexus
+28%→28%). Run 4 found the same for embeddings. Do not spend time exporting the real
 catalogue with descriptions — it was tested and it does not change the ranking.
 
 **The separators that actually matter at 412 tools:**
@@ -74,20 +84,34 @@ Experimental. MCPProxy if you want a single local binary and have good descripti
 everywhere; it leads on top-1 (26% vs 21%) but returns nothing 8 times in 43.
 Nexus scores best of all on top-1 (28%) and is still not recommendable: no release
 since September 2025. The best-scoring lexical engine here is the unmaintained one.
+These top-1 comparisons are lexical-only. With its semantic arm on, ToolHive
+measured 44% top-1 / 56% top-3 in Run 4 (a cross-run comparison, not
+significance-tested). That did not meet the pre-registered bar to change the
+selection recommendation above.
 
 ---
 
-## 4. The one open question
+## 4. The one open question (answered in Run 4)
 
-**Does semantic search beat the ~21% lexical ceiling?**
+**Does semantic search beat the ~21% lexical ceiling?** The pre-registered verdict
+is "semantic materially beats lexical": top-3 56% vs 33% for the non-semantic
+control, p = 0.006. Against pure lexical search, top-1 doubles (21% → 44%,
+p = 0.021, unadjusted), but the top-3 gain (44% → 56%) is not significant
+(p = 0.18), and the verdict clears its 10-point bar by one query. "change the
+schema safely" is still missed. The recommendation is unchanged. Details are in
+Run 4 of the validation doc.
+
+The rest of this section and §5 record the question and the blocker as they stood
+before Run 4.
 
 This matters because the failures are semantic, not lexical. The clearest example:
 "change the schema safely" never matched `apply_migration` in any engine in any
 condition, because that tool is described as *"Use this when executing DDL
 operations"*. No amount of keyword matching bridges "schema safely" → "DDL". That is
-exactly the gap embeddings exist to close — and exactly what could not be tested.
+exactly the gap embeddings exist to close. At the time it was also exactly what
+could not be tested. (Run 4 tested it: bge-small still misses it.)
 
-### Why it is blocked
+### Why it was blocked (historical)
 
 `huggingface.co` returns `403` at the egress proxy — an organisation policy denial:
 
@@ -168,7 +192,10 @@ arm never ran and the result is meaningless.**
 |---|---|---|---|---|---|
 | ToolHive lexical only (FTS5, ratio 0) | 21% | 44% | 49% | 1/43 | 3 ms |
 | ToolHive hybrid, **non-semantic control** | 21% | 33% | 44% | 0/43 | 48 ms |
-| ToolHive hybrid, **real embeddings** | ? | ? | ? | ? | ? |
+| ToolHive hybrid, **real embeddings** (Run 4) | **44%** | **56%** | **60%** | **0/43** | 76 ms* |
+
+\* Run 4 latency is from a 1.5-CPU container; its own lexical row measured 7 ms
+there, so compare latency only within Run 4.
 
 The control row is why the `hash` backend exists: it is a deterministic hashed
 bag-of-words with no synonymy by construction —
@@ -182,9 +209,9 @@ little.
 - 412 tools across 14 fixture servers, ground truth validated programmatically.
 - vMCP config validates; the OpenAI provider path works.
 - **44 embedding requests across 43 queries**, so the semantic arm genuinely calls
-  the endpoint. Only the model weights are missing.
+  the endpoint. At the time only the model weights were missing; Run 4 supplied them.
 
-Only ToolHive has a semantic mode. MCPProxy is lexical-only in shipped code and
+Of the three gateways benchmarked, only ToolHive has a semantic mode. MCPProxy is lexical-only in shipped code and
 Nexus is Tantivy-only, so this answers "does hybrid beat lexical", not a three-way
 comparison.
 
@@ -198,7 +225,8 @@ corrected mid-run:
 - Scoring vMCP at 0% because the scorer did not strip its `{workload}_` tool-name
   prefix. Real answer: 81%.
 - Scoring Nexus at 2% with 41/43 empty because its responses are newline-delimited
-  JSON objects and the parser only handled a single document. Real answer: 23%.
+  JSON objects and the parser only handled a single document. Real answer: 23%,
+  later corrected to 28% by the 2026-08-24 scorer audit.
 
 If a gateway scores near zero, suspect `realbench.py::names_in` before believing it.
 
@@ -236,5 +264,7 @@ effect on a running session. Always start a new one.
 
 ## 8. Resuming
 
-Paste [`HANDOVER-PROMPT.md`](./HANDOVER-PROMPT.md) into a fresh session. It is
-self-contained.
+Nothing is outstanding. [`HANDOVER-PROMPT.md`](./HANDOVER-PROMPT.md) is completed
+and kept as a record. For optional follow-up work (rank fusion, a larger model,
+current ToolHive HEAD), start from "Status" in the validation doc and write a new
+protocol file before running anything.
