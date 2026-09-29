@@ -1,6 +1,6 @@
 # BAS-More/skills — Active Codex handover
 
-**Status:** ACTIVE (routing benchmark finished 2026-09-29; project-memory continuation and one index gap remain, see "Session 2026-09-29")
+**Status:** ACTIVE (routing benchmark finished 2026-09-29; the project-memory continuation remains, see "Session 2026-09-29")
 **Updated:** 2026-09-29 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
@@ -253,12 +253,15 @@ session freshness check passed with all nine views and fingerprint
   says so. The harness version line, which printed a banner, was fixed after the
   runs; the fix does not affect scoring.
 
-Definition of done: items 1-4 are met. **Item 5 is not:** `.claude-plugin/plugin.json`
-lists none of the four `skills/misc/` skills (`git-guardrails-claude-code`,
-`migrate-to-shoehorn`, `scaffold-exercises`, `setup-pre-commit`), although
-`CLAUDE-PROJECT-RULES.md` requires it. This predates this session; changing it
-alters what the published plugin installs, so it is left for the owner. Item 6
-depends on this branch's PR checks.
+Definition of done for the routing benchmark: items 1-6 are met.
+
+- Item 5 was not met at first: `.claude-plugin/plugin.json` listed none of the four
+  `skills/misc/` skills (`git-guardrails-claude-code`, `migrate-to-shoehorn`,
+  `scaffold-exercises`, `setup-pre-commit`), although `CLAUDE-PROJECT-RULES.md`
+  requires it. This predated the session. On the owner's decision (2026-09-29) the
+  four entries were added on branch `claude/plugin-json-misc`, in README order.
+- Item 6: the Run 4 PR #13 was merged by the owner on 2026-09-29 (merge `578950f`).
+  Both Socket Security checks passed; CodeRabbit was still pending at merge.
 
 Also this session: PR #12 (`project-memory-v2`: task-scoped project-memory wording
 plus `eb3aa72`) was applied and tested here, then pushed, opened and merged by the
@@ -277,10 +280,9 @@ was left alone.
 
 Remaining work, in order:
 
-1. Owner decision on the `plugin.json` / `misc` gap (add the four entries, or change
-   the rule).
-2. Owner review and merge of this branch's PR (Run 4).
-3. The independent project-memory continuation above (per-project graph bootstrap
+1. Owner review and merge of the `claude/plugin-json-misc` PR (the four `misc`
+   entries in `plugin.json`).
+2. The independent project-memory continuation above (per-project graph bootstrap
    and acceptance) is unchanged by this session.
-4. Optional routing follow-ups (rank fusion, larger model, current ToolHive HEAD)
+3. Optional routing follow-ups (rank fusion, larger model, current ToolHive HEAD)
    are listed under "Status" in the validation doc. None is required.
