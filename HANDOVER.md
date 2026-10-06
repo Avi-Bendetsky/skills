@@ -1,7 +1,7 @@
 # BAS-More/skills — Active Codex handover
 
 **Status:** ACTIVE (routing benchmark finished 2026-09-29; the project-memory continuation remains, see "Session 2026-09-29")
-**Updated:** 2026-09-29 (Australia/Melbourne)
+**Updated:** 2026-10-06 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
 **Primary workstream:** semantic MCP/tool-routing benchmark and skills repository maintenance
@@ -286,3 +286,25 @@ Remaining work, in order:
    and acceptance) is unchanged by this session.
 3. Optional routing follow-ups (rank fusion, larger model, current ToolHive HEAD)
    are listed under "Status" in the validation doc. None is required.
+
+
+## Session 2026-10-06: upstream sync (supersedes PR #15)
+
+PR #15 (`mattpocock/skills:main` into `main`) could not be fixed in place: its head is the
+upstream repo, which BAS-More cannot push to. Instead, branch `sync/upstream-2026-10-06`
+merges `upstream/main` (4588b32, 409 commits) into `main` (0741c29) with conflicts resolved:
+
+- Kept the fork's `CLAUDE.md` / `AGENTS.md` handover entry points (`AGENTS.md` stays a regular
+  file, not upstream's symlink). `CLAUDE-PROJECT-RULES.md` now carries upstream's new rules plus
+  a "BAS-More fork deviations" section.
+- Kept the four `misc/` skills in `plugin.json` and the README (PR #14), and the `personal/`
+  bucket with `phone-backup-before-reset`. Upstream removed `write-a-skill`, `edit-article`,
+  `obsidian-vault`, and `CONTEXT.md` (now `GLOSSARY.md`); those removals were taken.
+- Took upstream for the in-progress README and `setup-matt-pocock-skills`.
+
+Checks: no conflict markers; every `plugin.json` path has a `SKILL.md`; README and plugin lists
+match; every engineering/productivity skill has a docs page; `claude plugin validate . --strict`
+passes. Known upstream gap, not changed here: `skills/in-progress/README.md` does not list
+`chief-of-staff`.
+
+Remaining: owner review and merge of the sync PR, then close PR #15.
