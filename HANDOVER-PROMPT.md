@@ -2,11 +2,23 @@
 
 > **Update 2026-09-29: the routing-benchmark objective below is complete** (Run 4 in
 > `docs/mcp-tool-routing-layer-validation.md`; summary in `HANDOVER.md` → "Session
-> 2026-09-29"). Do not re-run it. What remains:
-> 1. Owner review and merge of the `claude/plugin-json-misc` PR, which adds the four
->    `skills/misc/` skills to `.claude-plugin/plugin.json`. The Run 4 PR (#13) and
->    PR #12 (project-memory v2) are already merged.
-> 2. The project-memory continuation sections at the end of this prompt.
+> 2026-09-29"). Do not re-run it.
+>
+> **Update 2026-10-06:** the `claude/plugin-json-misc` PR (#14) is merged as
+> `fad207d`, so the four `skills/misc/` skills are in `.claude-plugin/plugin.json`.
+> The publication invariants are no longer a manual checklist — run
+> `./scripts/check-invariants.sh` before committing any skill change, and the
+> `Skill invariants` workflow runs it on every PR that touches `skills/`,
+> `README.md`, or the manifest. See `HANDOVER.md` → "Session 2026-10-06".
+>
+> What remains:
+> 1. The project-memory continuation sections at the end of this prompt.
+> 2. Normalise the `Status:` field in `HANDOVER.md` to the enum
+>    `ACTIVE | BLOCKED | COMPLETE` that `00-READ-FIRST.md` defines and gates on; it
+>    currently holds a prose sentence that an automated reader cannot parse.
+> 3. Run `shellcheck` over `scripts/check-invariants.sh` — the cloud session that
+>    wrote it was denied the binary download by egress policy, so it is
+>    behaviour-tested but not statically linted.
 
 You are continuing Codex thread `01a03bc7-0d2a-75e2-8c3e-c9d125ded17e` in `https://github.com/BAS-More/skills`.
 
@@ -26,7 +38,8 @@ Primary objective: finish the semantic MCP/tool-routing evaluation without tunin
 - Reject any semantic result with zero embedding requests.
 - Record top-1, empty-result rate, embedding calls, overhead, exclusions, commit, and configuration.
 - Update `docs/mcp-tool-routing-layer-validation.md` with a reproducible conclusion.
-- Maintain the skill bucket, README, and plugin-manifest invariants.
+- Maintain the skill bucket, README, and plugin-manifest invariants — verify with
+  `./scripts/check-invariants.sh`, not by reading the rules by hand.
 
 Do not kill processes with broad `pkill -f`, commit caches/secrets, or report a score before validating the scorer.
 
