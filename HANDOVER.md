@@ -1,7 +1,7 @@
 # BAS-More/skills — Active Codex handover
 
 **Status:** ACTIVE (routing benchmark finished 2026-09-29; the project-memory continuation remains, see "Session 2026-09-29")
-**Updated:** 2026-09-29 (Australia/Melbourne)
+**Updated:** 2026-10-06 (Australia/Melbourne)
 **Default branch:** `main`
 **Codex thread:** `codex://threads/01a03bc7-0d2a-75e2-8c3e-c9d125ded17e`
 **Primary workstream:** semantic MCP/tool-routing benchmark and skills repository maintenance
@@ -103,10 +103,22 @@ Then update the benchmark handover and this root handover. If no engineering wor
 
 Before committing skill changes, verify the repository publication invariants:
 
+```bash
+./scripts/check-invariants.sh
+```
+
+It checks all of them mechanically, and the `Skill invariants` workflow runs it on
+every pull request that touches `skills/`, `README.md`, the plugin manifest, or the
+checker itself. The rules it enforces, unchanged from `CLAUDE-PROJECT-RULES.md`:
+
 - every skill in `engineering/`, `productivity/`, or `misc/` is linked from the top-level `README.md`;
 - every promoted skill appears in `.claude-plugin/plugin.json`;
 - `personal/`, `in-progress/`, and `deprecated/` skills do not appear in those public indexes;
 - each bucket README lists each skill with a link to its `SKILL.md`.
+
+Reading the list by hand is no longer the check — it is the documentation of what the
+check does. This list was a manual checklist up to 2026-10-06, and item 5 of the
+routing benchmark's definition of done was missed under it (see "Session 2026-09-29").
 
 Run the benchmark-specific checks documented beside the scripts. Do not use a generic green exit as proof that embeddings were exercised.
 
@@ -286,3 +298,75 @@ Remaining work, in order:
    and acceptance) is unchanged by this session.
 3. Optional routing follow-ups (rank fusion, larger model, current ToolHive HEAD)
    are listed under "Status" in the validation doc. None is required.
+
+## Session 2026-10-06 — publication invariants automated (Claude Code, branch `claude/repository-code-review-l65q2b`)
+
+`main` was `0741c29` at session start and is unchanged by this session apart from this
+branch. The previous session's remaining item 1 (merge of `claude/plugin-json-misc`)
+is **done**: PR #14 landed as `fad207d`, so all four `skills/misc/` entries are in
+`.claude-plugin/plugin.json`. Items 2 and 3 are untouched.
+
+**What changed.** The publication invariants in `CLAUDE-PROJECT-RULES.md` were
+convention-only — nothing checked them, and the only thing between an unpromoted
+draft and the public plugin index was whoever remembered to edit three files at once.
+They are now enforced:
+
+- `scripts/check-invariants.sh` — six checks: every skill directory has a `SKILL.md`;
+  every public skill has a manifest entry; every public skill is linked **by name**
+  from `README.md`; no `personal/`/`in-progress/`/`deprecated/` skill appears in
+  either public index; every bucket README lists each of its skills with a link and a
+  one-line description; every manifest entry resolves to a real skill.
+- `.github/workflows/skill-invariants.yml` — runs it on pull requests and pushes to
+  `main` that touch `skills/**`, `README.md`, `.claude-plugin/plugin.json`, the
+  checker, or the workflow. Those five paths are exactly the checker's inputs, so the
+  path filter cannot skip a run that would change the outcome.
+
+**Deliberately dependency-free** (bash + coreutils + grep; no node, no jq) so the
+same command runs in CI, in a pre-commit hook, and on a laptop with nothing
+installed. The manifest is a flat list of path strings, so a fixed-string grep reads
+it correctly regardless of key order, and a skill name is never reinterpreted as a
+regex.
+
+**Verification.** `./scripts/check-invariants.sh` exits 0 on `0741c29`. Each of the
+six checks was then confirmed to actually fire, against mutated copies in a scratch
+directory (the repository was never dirtied):
+
+| Mutation | Result |
+| --- | --- |
+| skill directory with no `SKILL.md` | fires (4 checks) |
+| the four `misc/` entries removed from the manifest — replays the `fad207d` bug | fires, naming all four |
+| README link target changed away from `SKILL.md` | fires |
+| README link target correct but text does not name the skill | fires |
+| private skill added to the manifest | fires |
+| private skill referenced in `README.md` | fires |
+| bucket README entry deleted | fires |
+| bucket README entry left with no description | fires |
+| bucket README "description" that is only an em-dash | fires |
+| manifest entry pointing at a nonexistent skill | fires |
+
+Two of those cases were found by this testing rather than by review: the description
+check first passed a bare `**[name](./name/SKILL.md)**` line, because the house
+format's trailing `**` satisfied a naive "any character after the link" test. It now
+cuts the line at the link with a literal match and requires at least
+`MIN_DESCRIPTION_CHARS` (10) of prose. A checker that only ever passes is worth
+nothing, so the negative cases are the evidence, not the clean run.
+
+`bash -n` is clean. `shellcheck` could **not** be run: this cloud session's egress
+policy returned 403 for its binary download, so the script is behaviour-tested but
+not statically linted — worth running once in an environment that has it.
+
+**Not changed, deliberately.** The `Status:` field at the top of this file now holds
+a prose sentence, while `00-READ-FIRST.md` defines it as the enum
+`ACTIVE | BLOCKED | COMPLETE` and keys the mandatory session gate on it. A careless
+or automated reader cannot parse the current value. Left alone because it changes
+gate semantics and was outside what this session was asked to do; it is a one-line
+fix for whoever owns that decision.
+
+Remaining work, in order:
+
+1. The independent project-memory continuation (per-project graph bootstrap and
+   acceptance) is unchanged by this session.
+2. Optional routing follow-ups (rank fusion, larger model, current ToolHive HEAD)
+   are listed under "Status" in the validation doc. None is required.
+3. Normalise the `Status:` field above to the documented enum, and run `shellcheck`
+   over `scripts/check-invariants.sh` where the binary is available.
