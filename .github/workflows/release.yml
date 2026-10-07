@@ -9,6 +9,8 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   release:
+    # BAS-More fork: upstream-only automation, skipped here (see CLAUDE-PROJECT-RULES.md).
+    if: github.repository == 'mattpocock/skills'
     name: Version
     runs-on: ubuntu-latest
     permissions:

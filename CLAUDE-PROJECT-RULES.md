@@ -24,6 +24,12 @@ To (re)link every skill outside `deprecated/` and `misc/` into the local harness
 
 No em-dashes anywhere in this repo's prose (`SKILL.md` files, docs, `README.md`, `CHANGELOG.md`, ADRs, changesets, code comments). Where a sentence reaches for one, rewrite it instead with a comma, colon, period, parentheses, or a conjunction, whichever the sentence actually wants; never do a blind character substitution.
 
+## Agent skills
+
+### Triage labels
+
+Canonical names, unchanged. See `docs/agents/triage-labels.md`. Issues are judged against [`SCOPE.md`](./SCOPE.md).
+
 ## BAS-More fork deviations
 
 These override the upstream rules above for this fork only.
@@ -31,3 +37,4 @@ These override the upstream rules above for this fork only.
 - `misc/` skills ship in this fork's `.claude-plugin/plugin.json` and are listed in the top-level `README.md` under **Misc** (flat list, no docs pages).
 - `personal/` is kept as a bucket for skills tied to the BAS-More setup. Its skills must not appear in `.claude-plugin/plugin.json` or the top-level `README.md`, and get no docs pages.
 - `CLAUDE.md` and `AGENTS.md` are the BAS-More handover entry points (regular files, not the upstream symlink). The upstream `CLAUDE.md` rules live in this file.
+- Upstream's repo-automation workflows (`release.yml`, `triage-label.yml`, `needs-info.yml`) are kept but each job is guarded with `if: github.repository == 'mattpocock/skills'`, so they do not open version PRs, push tags, or label/close issues on this fork. Keep the guard when syncing.

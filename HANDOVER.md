@@ -387,7 +387,16 @@ merges `upstream/main` (4588b32, 409 commits) into `main` (0741c29) with conflic
 
 Checks: no conflict markers; every `plugin.json` path has a `SKILL.md`; README and plugin lists
 match; every engineering/productivity skill has a docs page; `claude plugin validate . --strict`
-passes. Known upstream gap, not changed here: `skills/in-progress/README.md` does not list
-`chief-of-staff`.
+passes. Upstream's `skills/in-progress/README.md` did not list `chief-of-staff`; a one-line entry
+was added so `scripts/check-invariants.sh` passes.
+
+Re-synced 2026-10-07 before pushing: merged `main` 7de6cc4 (PR #16, invariant check; only
+`HANDOVER.md` conflicted, both entries kept) and `upstream/main` dd400c3 (26 more commits;
+only `CLAUDE.md` conflicted, fork entry point kept and upstream's new "Agent skills / Triage
+labels" section moved into `CLAUDE-PROJECT-RULES.md`). Upstream's `release.yml`,
+`triage-label.yml` and `needs-info.yml` jobs are guarded with
+`if: github.repository == 'mattpocock/skills'` (owner decision, option B) so they stay inert
+on this fork; recorded under "BAS-More fork deviations". `scripts/check-invariants.sh` and
+`claude plugin validate . --strict` pass.
 
 Remaining: owner review and merge of the sync PR, then close PR #15.
