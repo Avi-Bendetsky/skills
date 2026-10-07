@@ -1,0 +1,43 @@
+name: Skill invariants
+# Enforces the publication rules in CLAUDE-PROJECT-RULES.md, which were
+# convention-only until now: a promoted skill must be reachable from both
+# public indexes, an unpromoted one from neither. Those rules span three file
+# sets (skills/, README.md, the plugin manifest), so any one of them can be
+# edited into an inconsistent state on its own — which is how the four `misc/`
+# skills went unlisted in the manifest until a later pass caught it.
+#
+# Every path below is an input the checker reads, so the filter never skips a
+# run that could change the outcome: editing README.md alone can break an
+# invariant just as surely as adding a skill.
+on:
+  pull_request:
+    paths:
+      - 'skills/**'
+      - 'README.md'
+      - '.claude-plugin/plugin.json'
+      - 'scripts/check-invariants.sh'
+      - '.github/workflows/skill-invariants.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'skills/**'
+      - 'README.md'
+      - '.claude-plugin/plugin.json'
+      - 'scripts/check-invariants.sh'
+      - '.github/workflows/skill-invariants.yml'
+permissions:
+  contents: read
+jobs:
+  invariants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Pinned to a full commit SHA, not a tag: a tag is a mutable pointer, so
+      # repointing it would be arbitrary code execution in CI.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      # No toolchain setup step: the checker is bash + coreutils + grep on
+      # purpose, so it runs identically here, in a pre-commit hook, and on a
+      # laptop with nothing installed.
+      - run: ./scripts/check-invariants.sh
