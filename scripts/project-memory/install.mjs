@@ -18,6 +18,11 @@ export const VIEWS = ['structural', 'dependencies', 'modules', 'database', 'proc
 const MARKERS = [2, 1].map(v => ['<!-- bas-more-project-memory:v' + v + ':start -->', '<!-- bas-more-project-memory:v' + v + ':end -->']);
 const [BEGIN, END] = MARKERS[0];
 export const hash = text => createHash('sha256').update(text).digest('hex');
+const lf = text => text.replace(/\r\n/g, '\n');
+// Pins predate line-ending awareness: some hash the LF blob, some a Windows (autocrlf) CRLF checkout.
+// A pin matches if the text hashes to it as-is, as LF or as CRLF - only line endings are tolerated.
+export const matchesPin = (text, pin) => text != null && typeof pin === 'string' &&
+  [text, lf(text), lf(text).replace(/\n/g, '\r\n')].some(variant => hash(variant) === pin);
 
 // Locate the single managed block of any known version; { start, end } spans both markers.
 export function findBlock(text) {
@@ -72,30 +77,34 @@ export function planRepository({ repository, files, policy, aliases = {} }) {
     config = JSON.parse(files[CONFIG]);
     if (['declined', 'deferred'].includes(config.choice)) return { repository, outcome: 'preserved-' + config.choice, changes: [] };
     if (config.managedBy !== 'bas-more-project-memory' || config.repository !== repository) throw new Error('Existing memory configuration has a different owner or identity');
-    if (files[POLICY] == null || hash(files[POLICY]) !== config.policySha256) throw new Error('Existing policy was edited; review it before updating');
+    if (files[POLICY] == null || !matchesPin(files[POLICY], config.policySha256)) throw new Error('Existing policy was edited; review it before updating');
   } else if (files[POLICY] != null) throw new Error('Unmanaged policy already exists; preserve it for review');
   const formatting = config?.formatting;
   if (formatting) {
-    if (formatting.schemaVersion !== 1 || formatting.sourcePolicySha256 !== hash(policy) ||
+    if (formatting.schemaVersion !== 1 || !matchesPin(policy, formatting.sourcePolicySha256) ||
         !/^[a-z][a-z0-9-]*$/.test(formatting.tool ?? '') ||
         !/^\d+\.\d+\.\d+(?:[-+].+)?$/.test(formatting.version ?? '') ||
         !formatting.instructionBlockSha256 || typeof formatting.instructionBlockSha256 !== 'object') {
       throw new Error('Reviewed formatting receipt or source policy changed; review and format the new policy before updating');
     }
   }
-  const installedPolicy = formatting ? files[POLICY] : policy;
+  // Same policy text in another line-ending form: keep the checked-out bytes and the existing pin.
+  const unchanged = files[POLICY] != null && (formatting || lf(files[POLICY]) === lf(policy));
+  const installedPolicy = formatting || unchanged ? files[POLICY] : policy;
   const nextConfig = {
     ...(config ?? {}),
     ...(Object.keys(aliases).length ? { instructionAliases: aliases } : {}),
     schemaVersion: VERSION, managedBy: 'bas-more-project-memory',
     repository, choice: 'enabled', authorization: 'install-only-for-setup-task-or-in-session-confirmation',
-    policySource: SOURCE, policySha256: hash(installedPolicy), requiredViews: VIEWS,
+    policySource: SOURCE, policySha256: unchanged ? config.policySha256 : hash(lf(installedPolicy)), requiredViews: VIEWS,
     graphReadiness: config?.graphReadiness ?? 'requires-repository-validation',
     privacy: 'local-embeddings-only',
     instructions: 'Follow POLICY.md; use graph tooling only where set up; install only for a setup task or in-session confirmation; preserve existing tooling; record per-view evidence before marking graph setup complete.'
   };
   if (!Object.keys(aliases).length) delete nextConfig.instructionAliases;
-  const configText = formatting && JSON.stringify(config) === JSON.stringify(nextConfig) ? files[CONFIG] : JSON.stringify(nextConfig, null, 2) + '\n';
+  const canonicalConfig = JSON.stringify(nextConfig, null, 2) + '\n';
+  const configText = JSON.stringify(config) === JSON.stringify(nextConfig) &&
+    (formatting || lf(files[CONFIG]) === canonicalConfig) ? files[CONFIG] : canonicalConfig;
   const desired = { [POLICY]: installedPolicy, [CONFIG]: configText };
   const instructions = ['AGENTS.md', 'CLAUDE.md', ...['AGENTS.override.md', '.claude/CLAUDE.md'].filter(file => files[file] != null || aliases[file])];
   for (const file of instructions) {
@@ -105,7 +114,7 @@ export function planRepository({ repository, files, policy, aliases = {} }) {
     if (blockHash) {
       const current = files[target] ?? '';
       const block = findBlock(current);
-      if (!block || hash(current.slice(block.start, block.end)) !== blockHash) {
+      if (!block || !matchesPin(current.slice(block.start, block.end), blockHash)) {
         throw new Error('Reviewed formatted instruction block was edited: ' + target);
       }
       desired[target] = current;

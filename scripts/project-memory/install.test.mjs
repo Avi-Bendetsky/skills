@@ -232,3 +232,71 @@ test('upgrades v1 client rules to opt-in v2 rules without self-enrolment', t => 
   }
   assert.ok(clientPlan(profile).every(plan => plan.changes.length === 0));
 });
+
+// --- D38: line-ending tolerance (pins made on LF blobs vs Windows autocrlf checkouts) ---
+const toCrlf = text => text.replace(/\r?\n/g, '\r\n');
+const toLf = text => text.replace(/\r\n/g, '\n');
+function convertCheckout(root, convert) { // simulate a fresh checkout under another core.autocrlf
+  for (const file of [POLICY, CONFIG, 'AGENTS.md', 'CLAUDE.md']) {
+    const value = readText(root, file);
+    if (value != null) fs.writeFileSync(path.join(root, file), convert(value));
+  }
+}
+test('D38: LF-pinned install verifies on a CRLF checkout with a CRLF template; rerun is a no-op and keeps the pin', t => {
+  const root = fixture(t);
+  applyPlan(root, makePlan(root), path.join(root, 'backups'));
+  const pin = JSON.parse(readText(root, CONFIG)).policySha256;
+  assert.equal(pin, hash(policy));
+  convertCheckout(root, toCrlf);
+  const plan = planRepository({ repository, files: filesAt(root), policy: toCrlf(policy) });
+  assert.equal(plan.outcome, 'policy-already-installed');
+  assert.equal(plan.changes.length, 0);
+  assert.equal(JSON.parse(readText(root, CONFIG)).policySha256, pin);
+});
+test('D38: CRLF-pinned install (Windows-made pin) verifies on an LF checkout without re-pinning', t => {
+  const root = fixture(t);
+  const crlfPolicy = toCrlf(policy);
+  applyPlan(root, planRepository({ repository, files: filesAt(root), policy: crlfPolicy }), path.join(root, 'backups'));
+  const config = JSON.parse(readText(root, CONFIG));
+  config.policySha256 = hash(crlfPolicy); // the legacy pin shape found in BAS-More/skill-router
+  fs.writeFileSync(path.join(root, CONFIG), JSON.stringify(config, null, 2) + '\n');
+  convertCheckout(root, toLf);
+  const plan = planRepository({ repository, files: filesAt(root), policy });
+  assert.equal(plan.changes.length, 0);
+});
+test('D38: new pins are the LF (git blob) hash even when the template is read as CRLF', t => {
+  const root = fixture(t);
+  applyPlan(root, planRepository({ repository, files: filesAt(root), policy: toCrlf(policy) }), path.join(root, 'backups'));
+  assert.equal(JSON.parse(readText(root, CONFIG)).policySha256, hash(policy));
+});
+test('D38: tolerance is line endings only - content and whitespace edits under CRLF are still rejected', t => {
+  const root = fixture(t);
+  applyPlan(root, makePlan(root), path.join(root, 'backups'));
+  convertCheckout(root, toCrlf);
+  fs.appendFileSync(path.join(root, POLICY), 'Human addition\r\n');
+  assert.throws(() => makePlan(root), /policy was edited/);
+  const second = fixture(t);
+  applyPlan(second, makePlan(second), path.join(second, 'backups'));
+  fs.writeFileSync(path.join(second, POLICY), policy.replace('\n', ' \n')); // trailing space, same EOLs
+  assert.throws(() => makePlan(second), /policy was edited/);
+});
+test('D38: formatted receipts verify across line endings and still reject edited blocks', t => {
+  const root = fixture(t);
+  formattedFixture(root);
+  convertCheckout(root, toCrlf);
+  assert.equal(planRepository({ repository, files: filesAt(root), policy: toCrlf(policy) }).changes.length, 0);
+  fs.writeFileSync(path.join(root, 'AGENTS.md'), readText(root, 'AGENTS.md').replace('Use the graph workflow', 'Always build the graph workflow'));
+  assert.throws(() => makePlan(root), /formatted instruction block was edited/);
+});
+test('D38: a v1 LF pin on a CRLF checkout still upgrades to v2 (real content change re-pins once)', t => {
+  const root = fixture(t);
+  const v1Policy = '# Comprehensive project memory\nversion 1 policy\n';
+  fs.writeFileSync(path.join(root, 'AGENTS.md'), toCrlf('Before.\n' + v1Block('\n') + '\nAfter.\n'));
+  fs.mkdirSync(path.join(root, '.project-memory'));
+  fs.writeFileSync(path.join(root, POLICY), toCrlf(v1Policy));
+  fs.writeFileSync(path.join(root, CONFIG), toCrlf(JSON.stringify({ schemaVersion: 1, managedBy: 'bas-more-project-memory', repository, choice: 'enabled',
+    policySha256: hash(v1Policy), graphReadiness: 'requires-repository-validation' }, null, 2) + '\n'));
+  applyPlan(root, makePlan(root), path.join(root, 'backups'));
+  assert.equal(JSON.parse(readText(root, CONFIG)).policySha256, hash(policy));
+  assert.equal(makePlan(root).changes.length, 0);
+});
