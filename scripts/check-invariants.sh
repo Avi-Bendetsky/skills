@@ -82,6 +82,21 @@ links_skill() {
 echo "Checking publication invariants (CLAUDE-PROJECT-RULES.md) in $REPO"
 echo
 
+echo "0. every bucket under skills/ is classified public or private"
+# Without this, the two lists above are a SILENT ALLOW-LIST: add skills/writing/ tomorrow
+# and every rule below skips it, so the gate passes having checked nothing about the one
+# bucket nobody has reviewed yet. That is the exact failure this script exists to prevent,
+# so an unclassified bucket is an error rather than a thing to ignore.
+for dir in skills/*/; do
+  [ -d "$dir" ] || continue
+  bucket="$(basename "$dir")"
+  known=0
+  for b in "${PUBLIC_BUCKETS[@]}" "${PRIVATE_BUCKETS[@]}"; do
+    [ "$b" = "$bucket" ] && known=1 && break
+  done
+  [ "$known" -eq 1 ] || fail "skills/$bucket is in neither PUBLIC_BUCKETS nor PRIVATE_BUCKETS in $(basename "$0") — classify it (and add it to the right public indexes) rather than leaving it unchecked"
+done
+
 echo "1. every skill directory has a SKILL.md"
 for bucket in "${PUBLIC_BUCKETS[@]}" "${PRIVATE_BUCKETS[@]}"; do
   while IFS= read -r skill; do
