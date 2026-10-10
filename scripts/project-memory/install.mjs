@@ -228,7 +228,6 @@ export function rollback(journalPath) {
 }
 export function clientPlan(profile, codexHome = path.join(profile, '.codex')) {
   profile = fs.realpathSync(profile);
-  codexHome = fs.realpathSync(codexHome);
   const body = [
     '## Project memory (opt-in)',
     "After mandatory project entry and handover reads, check for the repository's",
@@ -250,14 +249,25 @@ export function clientPlan(profile, codexHome = path.join(profile, '.codex')) {
     'Installed rules do not prove graph generation, hook execution or integration tests passed.'
   ].join('\n');
   const specs = [
-    { root: profile, file: '.claude/CLAUDE.md' },
-    { root: codexHome, file: fs.existsSync(path.join(codexHome, 'AGENTS.override.md')) ? 'AGENTS.override.md' : 'AGENTS.md' }
+    { client: 'claude', root: profile, file: '.claude/CLAUDE.md' },
+    { client: 'codex', root: codexHome, file: fs.existsSync(path.join(codexHome, 'AGENTS.override.md')) ? 'AGENTS.override.md' : 'AGENTS.md' }
   ];
-  return specs.map(({ root, file }) => {
-    const before = readText(root, file);
-    // Append global rules outside existing locked sections; preserve all original bytes.
-    const after = findBlock(before ?? '') ? managedBlock(before, body) : (before ?? '') + ((before ?? '').endsWith('\n') ? '\n' : '\n\n') + [BEGIN, body, END, ''].join('\n');
-    return { root, repository: 'local-client-rules', changes: before === after ? [] : [{ file, before, after, beforeHash: before == null ? null : hash(before), afterHash: hash(after) }] };
+  // The two clients are independent, so each is planned on its own and a target that cannot be
+  // planned becomes a reported outcome. Resolving both roots up front, or letting one throw out
+  // of this map, made a missing ~/.codex or a symlinked ~/.claude abort the whole command and
+  // left the other client's rules uninstalled.
+  return specs.map(({ client, root, file }) => {
+    // Not created here: a machine without Codex should not gain a ~/.codex tree.
+    if (!fs.existsSync(root)) return { client, root, repository: 'local-client-rules', outcome: 'skipped-client-home-missing', changes: [] };
+    try {
+      root = fs.realpathSync(root);
+      const before = readText(root, file);
+      // Append global rules outside existing locked sections; preserve all original bytes.
+      const after = findBlock(before ?? '') ? managedBlock(before, body) : (before ?? '') + ((before ?? '').endsWith('\n') ? '\n' : '\n\n') + [BEGIN, body, END, ''].join('\n');
+      return { client, root, repository: 'local-client-rules', changes: before === after ? [] : [{ file, before, after, beforeHash: before == null ? null : hash(before), afterHash: hash(after) }] };
+    } catch (error) {
+      return { client, root, repository: 'local-client-rules', outcome: 'client-rules-unavailable', error: error.message, changes: [] };
+    }
   });
 }
 async function main() {
@@ -267,8 +277,12 @@ async function main() {
   if (command === 'clients') {
     const profile = option('--profile') ?? os.homedir();
     const plans = clientPlan(profile, option('--codex-home') ?? process.env.CODEX_HOME ?? path.join(profile, '.codex'));
-    if (!rest.includes('--apply')) return plans.map(p => ({ root: p.root, files: p.changes.map(c => c.file) }));
-    return plans.map(p => applyPlan(p.root, p, path.join(profile, '.project-memory', 'backups')));
+    // A refused layout must not read as success, even though the other client was still planned.
+    if (plans.some(p => p.error)) process.exitCode = 1;
+    if (!rest.includes('--apply')) return plans.map(p => ({ client: p.client, root: p.root, outcome: p.outcome, error: p.error, files: p.changes.map(c => c.file) }));
+    // applyPlan realpaths its root before its empty-plan early return, so a skipped plan
+    // (root absent) must not reach it: only plans with changes are applied.
+    return plans.map(p => p.changes.length ? { client: p.client, ...applyPlan(p.root, p, path.join(profile, '.project-memory', 'backups')) } : { ...p, applied: 0 });
   }
   const root = fs.realpathSync(option('--root') ?? process.cwd());
   const repository = option('--repository');

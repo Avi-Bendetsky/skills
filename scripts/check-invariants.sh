@@ -11,10 +11,12 @@ set -euo pipefail
 # That gap was real, not theoretical: the four `misc/` skills shipped without
 # manifest entries and stayed that way until a later pass noticed.
 #
-# Deliberately dependency-free (bash + coreutils + grep, no node/jq) so it runs
-# identically in CI, in a pre-commit hook, and on a laptop with nothing
-# installed. The manifest is a flat list of path strings, so a fixed-string
-# grep is sufficient to read it and cannot be fooled by key ordering.
+# Deliberately dependency-free (bash + coreutils + grep + sed, no node/jq) so it
+# runs identically in CI, in a pre-commit hook, and on a laptop with nothing
+# installed. The manifest is a flat list of path strings, so reading the lines
+# of its `skills` array is sufficient and cannot be fooled by key ordering.
+# (check-invariants.test.mjs uses node to build fixture trees; the checker
+# itself does not.)
 #
 # Exits 0 when every invariant holds, 1 otherwise, listing each violation.
 
@@ -36,6 +38,8 @@ ROOT_README="README.md"
 MIN_DESCRIPTION_CHARS=10
 
 failures=0
+# Skill directories walked by rule 1; see the floor check after that loop.
+inspected=0
 
 fail() {
   printf '  FAIL  %s\n' "$1"
@@ -54,10 +58,41 @@ skills_in() {
   done
 }
 
-# True if the manifest lists this exact skill path. Matched as a fixed string
-# including the surrounding quotes, so `tdd` never matches `tdd-extra`.
+# Every element of the manifest's `skills` array, one per line, exactly as
+# written (quotes stripped, spelling untouched). Scoped to the array rather than
+# grepping the whole file so a path-like string in another field can never be
+# read as a published skill, and a typo'd element such as `./skils/personal/x`
+# is still seen and judged instead of silently skipped. The second sed drops the
+# `"skills"` key token that the range's first line carries.
+manifest_skill_entries() {
+  sed -n '/"skills"[[:space:]]*:[[:space:]]*\[/,/\]/p' "$MANIFEST" |
+    sed '1s/.*\[//' |
+    grep -oE '"[^"]*"' |
+    tr -d '"' || true
+}
+
+# True if the manifest lists this skill, compared on the resolved path rather
+# than the spelling. Still whole-string equality, so `tdd` never matches
+# `tdd-extra`.
+#
+# This used to be a byte-exact grep for "./skills/<bucket>/<skill>". That is
+# right when a PRESENT entry is required (rule 2: a mis-spelled public entry
+# fails loudly) but backwards for rule 4, which asks whether a private skill is
+# ABSENT: there any spelling that is not byte-identical ("./skills/x/y/" copied
+# off a directory listing, "skills/x/y" without the "./") read as "not
+# published" although the entry names the same directory, and the gate stayed
+# green.
+# The leading "./" and trailing "/" are stripped here so those two realistic
+# hand-edit mistakes get the right message ("is listed") in one run; every other
+# spelling is rejected by rule 6, so no entry can be silently absent from here.
 in_manifest() {
-  grep -qF "\"./skills/$1/$2\"" "$MANIFEST"
+  local want="skills/$1/$2" entry
+  while IFS= read -r entry; do
+    entry="${entry#./}"
+    entry="${entry%/}"
+    [ "$entry" = "$want" ] && return 0
+  done < <(manifest_skill_entries)
+  return 1
 }
 
 # True if $file contains a markdown link whose TARGET is this skill's SKILL.md
@@ -101,9 +136,16 @@ echo "1. every skill directory has a SKILL.md"
 for bucket in "${PUBLIC_BUCKETS[@]}" "${PRIVATE_BUCKETS[@]}"; do
   while IFS= read -r skill; do
     [ -n "$skill" ] || continue
+    inspected=$((inspected + 1))
     [ -f "skills/$bucket/$skill/SKILL.md" ] || fail "skills/$bucket/$skill has no SKILL.md"
   done < <(skills_in "$bucket")
 done
+# Every rule here is a loop over skills_in, which is silent for a missing bucket, and a loop
+# over nothing passes. Rename or drop skills/ (a reorg, or an upstream sync that changes the
+# layout) and all of them iterate zero skills, so the verdict below reads "OK" with nothing
+# verified while the manifest and README links may be broken. Rule 0 cannot catch it either:
+# it only reacts to a bucket it finds. Finding no skill at all is a failure, not a clean run.
+[ "$inspected" -gt 0 ] || fail "no skill directories found in any bucket under skills/, so no rule in this run checked anything (was skills/ renamed or removed?)"
 
 echo "2. every public skill has a $MANIFEST entry"
 for bucket in "${PUBLIC_BUCKETS[@]}"; do
@@ -164,11 +206,45 @@ for bucket in "${PUBLIC_BUCKETS[@]}" "${PRIVATE_BUCKETS[@]}"; do
   done < <(skills_in "$bucket")
 done
 
-echo "6. every $MANIFEST entry resolves to a real skill"
+echo "6. every $MANIFEST entry is written canonically and resolves to a real skill"
+# Canonical spelling is required, not just tolerated: in_manifest (rules 2 and 4)
+# only forgives a leading "./" and a trailing "/", so this is what stops any
+# other spelling of the same directory ("./skills/./x/y", ".//skills/x/y",
+# "../", an absolute path) from naming a skill that rule 4 counts as absent. The
+# first character of each segment excludes "." so "." and ".." segments fail.
+# Every entry is either canonical (in_manifest resolves it) or flagged here, so
+# none can be missing from both.
 while IFS= read -r entry; do
   [ -n "$entry" ] || continue
-  [ -f "$entry/SKILL.md" ] || fail "$MANIFEST entry '$entry' has no SKILL.md"
-done < <(grep -oE '"\./skills/[^"]*"' "$MANIFEST" | tr -d '"' || true)
+  if [[ ! "$entry" =~ ^\./skills/[^/.][^/]*/[^/.][^/]*$ ]]; then
+    fail "$MANIFEST entry '$entry' is not written as './skills/<bucket>/<skill>' (no trailing slash, no extra './' or '../' segment, not absolute), so the other rules cannot account for it"
+    continue
+  fi
+  [ -f "${entry#./}/SKILL.md" ] || fail "$MANIFEST entry '$entry' has no SKILL.md"
+done < <(manifest_skill_entries)
+
+echo "7. every skill link in a public index resolves to a real skill"
+# The mirror of rule 6 for the other public index. Rules 2, 3 and 5 only run
+# forward (skill on disk -> index entry), so deleting or renaming a skill used
+# to leave its README link behind as a published 404 while this gate stayed
+# green: rule 6 caught the manifest half of that edit and nothing caught the
+# README half.
+while IFS= read -r link; do
+  [ -n "$link" ] || continue
+  [ -f "${link#./}" ] || fail "$ROOT_README links '$link', which has no SKILL.md"
+done < <(grep -oE '\]\(\./skills/[^)]+/SKILL\.md\)' "$ROOT_README" |
+  sed -E 's/^\]\(//; s/\)$//' | sort -u || true)
+
+for bucket in "${PUBLIC_BUCKETS[@]}" "${PRIVATE_BUCKETS[@]}"; do
+  readme="skills/$bucket/README.md"
+  [ -f "$readme" ] || continue
+  while IFS= read -r skill; do
+    [ -n "$skill" ] || continue
+    [ -f "skills/$bucket/$skill/SKILL.md" ] ||
+      fail "$readme links './$skill/SKILL.md', which has no SKILL.md"
+  done < <(grep -oE '\]\(\./[^)/]+/SKILL\.md\)' "$readme" |
+    sed -E 's|^\]\(\./||; s|/SKILL\.md\)$||' | sort -u || true)
+done
 
 echo
 if [ "$failures" -eq 0 ]; then

@@ -52,8 +52,15 @@ for DEST in "${DESTS[@]}"; do
     src="${srcs[$i]}"
     target="$DEST/$name"
 
+    # $DEST is a shared namespace and every entry this script creates is a
+    # symlink, so a real file or directory here came from somewhere else (e.g. a
+    # hand-written skill). Bail instead of deleting it, and don't fall through
+    # either: `ln -sfn` onto a real directory exits 0 after nesting a link inside
+    # it, which would report a link nobody can use.
     if [ -e "$target" ] && [ ! -L "$target" ]; then
-      rm -rf "$target"
+      echo "error: $target already exists and is not a symlink, so it did not come from this repo." >&2
+      echo "Move or remove it yourself (it may be a hand-written skill), then re-run." >&2
+      exit 1
     fi
 
     ln -sfn "$src" "$target"

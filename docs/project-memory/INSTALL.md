@@ -36,6 +36,14 @@ session so the client loads the changed instructions. These are model instructio
 not a background GitHub watcher or a mechanical proof of graph use. Other machines
 and cloud clients require their own instruction configuration.
 
+Each client is planned on its own, so one that cannot be installed does not stop the
+other. A missing Codex home is reported as `skipped-client-home-missing` and is not
+created, so a machine without Codex still gets Claude's rules; this holds for an
+explicit `--codex-home` that does not exist as well. A client whose layout is refused,
+such as a symlinked `~/.claude` from a dotfiles checkout, is reported as
+`client-rules-unavailable` with the reason and the command exits 1; the other client
+is still installed. The preview and apply reports name each client and its outcome.
+
 A rerun with unchanged policy is a no-op. Edited policies, conflicting identities,
 malformed blocks and unsafe symbolic links fail visibly. Root instruction aliases
 between AGENTS.md, AGENTS.override.md and CLAUDE.md preserve their existing link
