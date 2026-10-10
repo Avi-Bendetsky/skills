@@ -16,6 +16,7 @@ on:
       - 'README.md'
       - '.claude-plugin/plugin.json'
       - 'scripts/check-invariants.sh'
+      - 'scripts/check-invariants.test.mjs'
       - '.github/workflows/skill-invariants.yml'
   push:
     branches: [main]
@@ -24,6 +25,7 @@ on:
       - 'README.md'
       - '.claude-plugin/plugin.json'
       - 'scripts/check-invariants.sh'
+      - 'scripts/check-invariants.test.mjs'
       - '.github/workflows/skill-invariants.yml'
 permissions:
   contents: read
@@ -37,7 +39,11 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      # No toolchain setup step: the checker is bash + coreutils + grep on
+      # No toolchain setup step: the checker is bash + coreutils + grep + sed on
       # purpose, so it runs identically here, in a pre-commit hook, and on a
       # laptop with nothing installed.
       - run: ./scripts/check-invariants.sh
+      # Proves the gate rejects every spelling of an unpromoted manifest entry,
+      # not just the byte-exact one. Node is a test-only need (it builds the
+      # fixture trees) and ships on the runner.
+      - run: node --test scripts/check-invariants.test.mjs

@@ -1,13 +1,21 @@
 name: Project memory installer
+# install.mjs loads docs/project-memory/AGENTS.template.md at runtime: it is
+# the policy the installer writes. That makes it an input of this gate even
+# though it sits outside scripts/project-memory/. Leaving it out of the filter
+# meant a PR touching only the template ran nothing here, so renaming it or
+# retitling its first heading merged green while every `plan` and `install`
+# failed. Add any other repository file install.mjs reads to both lists.
 on:
   pull_request:
     paths:
       - 'scripts/project-memory/**'
+      - 'docs/project-memory/AGENTS.template.md'
       - '.github/workflows/project-memory-installer.yml'
   push:
     branches: [main]
     paths:
       - 'scripts/project-memory/**'
+      - 'docs/project-memory/AGENTS.template.md'
       - '.github/workflows/project-memory-installer.yml'
 permissions:
   contents: read

@@ -5,6 +5,7 @@ import os from 'node:os';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { planRepository, managedBlock, findBlock, applyPlan, rollback, readText, clientPlan, readRepository, hash, INPUTS, POLICY, CONFIG } from './install.mjs';
 
 const policy = '# Comprehensive project memory\nTest policy with nine required views.\n';
@@ -111,6 +112,42 @@ test('writes the active Codex override and Claude rules without modifying inacti
   assert.ok(fs.readFileSync(path.join(profile, '.codex', 'AGENTS.override.md'), 'utf8').startsWith('Active contract\n'));
   assert.ok(fs.readFileSync(path.join(profile, '.claude', 'CLAUDE.md'), 'utf8').startsWith('Character LOCKED\n'));
   assert.ok(clientPlan(profile).every(plan => plan.changes.length === 0));
+});
+
+test('installs the Claude rules on a profile with no Codex home and names the skipped client', t => {
+  const profile = fixture(t);
+  fs.mkdirSync(path.join(profile, '.claude'));
+  fs.writeFileSync(path.join(profile, '.claude', 'CLAUDE.md'), 'Character LOCKED\n');
+  const plans = clientPlan(profile);
+  assert.equal(plans[0].changes[0].file, '.claude/CLAUDE.md');
+  assert.equal(plans[1].outcome, 'skipped-client-home-missing');
+  assert.equal(plans[1].changes.length, 0);
+  for (const plan of plans) if (plan.changes.length) applyPlan(plan.root, plan, path.join(profile, 'backups'));
+  const text = fs.readFileSync(path.join(profile, '.claude', 'CLAUDE.md'), 'utf8');
+  assert.ok(text.startsWith('Character LOCKED\n'));
+  assert.ok(text.includes('<!-- bas-more-project-memory:v2:start -->'));
+  assert.ok(text.includes('Ask before installing'));
+  // A machine without Codex must not gain a ~/.codex tree it never had.
+  assert.equal(fs.existsSync(path.join(profile, '.codex')), false);
+  assert.ok(clientPlan(profile).every(plan => plan.changes.length === 0));
+});
+
+test('a client whose layout cannot be planned does not block the other client', t => {
+  const profile = fixture(t), dotfiles = fixture(t);
+  fs.writeFileSync(path.join(dotfiles, 'CLAUDE.md'), 'Dotfiles rules\n');
+  fs.symlinkSync(dotfiles, path.join(profile, '.claude'), process.platform === 'win32' ? 'junction' : 'dir');
+  fs.mkdirSync(path.join(profile, '.codex'));
+  fs.writeFileSync(path.join(profile, '.codex', 'AGENTS.md'), 'Inactive base\n');
+  const [claude, codex] = clientPlan(profile);
+  assert.match(claude.error, /Refusing symbolic link/);
+  assert.equal(claude.changes.length, 0);
+  assert.equal(codex.changes[0].file, 'AGENTS.md');
+  applyPlan(codex.root, codex, path.join(profile, 'backups'));
+  const text = fs.readFileSync(path.join(profile, '.codex', 'AGENTS.md'), 'utf8');
+  assert.ok(text.startsWith('Inactive base\n'));
+  assert.ok(text.includes('<!-- bas-more-project-memory:v2:start -->'));
+  // The refusal must not follow the link and write through it.
+  assert.equal(fs.readFileSync(path.join(dotfiles, 'CLAUDE.md'), 'utf8'), 'Dotfiles rules\n');
 });
 
 test('two repositories stay isolated and empty repositories receive truthful setup status', t => {
@@ -299,4 +336,13 @@ test('D38: a v1 LF pin on a CRLF checkout still upgrades to v2 (real content cha
   applyPlan(root, makePlan(root), path.join(root, 'backups'));
   assert.equal(JSON.parse(readText(root, CONFIG)).policySha256, hash(policy));
   assert.equal(makePlan(root).changes.length, 0);
+});
+
+// Every test above passes its own in-memory `policy`, so none of them reads the real template.
+// Run the CLI as users do, since it loads the template itself: a moved file fails with ENOENT and
+// a retitled heading with "Approved policy is missing".
+test('the CLI loads the shipped policy template and accepts it', t => {
+  const cli = fileURLToPath(new URL('./install.mjs', import.meta.url));
+  const out = execFileSync(process.execPath, [cli, 'plan', '--root', fixture(t), '--repository', repository], { encoding: 'utf8', stdio: 'pipe' });
+  assert.equal(JSON.parse(out).outcome, 'policy-ready-to-install');
 });
